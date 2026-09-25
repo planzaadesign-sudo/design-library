@@ -1,0 +1,7 @@
+# Uploaded files must never be executable, even if someone manages to
+# disguise a script as a CAD/image file. This is the standard fix for
+# the classic "upload a .php file into an uploads folder" attack.
+<FilesMatch "\.(php|phtml|php3|php4|php5|phar)$">
+    Require all denied
+</FilesMatch>
+Options -Indexes

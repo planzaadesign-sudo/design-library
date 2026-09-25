@@ -1,0 +1,7 @@
+# Block direct access to files that should never be served as-is.
+<FilesMatch "^(config\.php|config\.sample\.php|schema\.sql|db\.php)$">
+    Require all denied
+</FilesMatch>
+
+# Never allow directory listing.
+Options -Indexes

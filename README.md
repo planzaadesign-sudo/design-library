@@ -68,7 +68,9 @@ Change these passwords before going to production.
    then `schema-phase5.sql`, once (design similarity checks: 19 design
    parameters on briefs and designs, plus floors/BHK on briefs),
    then `seed-design-params.sql` (real parameters for the 6 sample designs,
-   so the similarity check does not see them as identical; safe to re-run).
+   so the similarity check does not see them as identical; safe to re-run),
+   then `schema-phase6.sql`, once (preview image for designer submissions;
+   the in-house and designer dashboards show a setup message until it is run).
    If anything is missing, the admin dashboard lists exactly what to run.
 3. Fill in `config.php` with real database credentials.
 4. Upload everything except the `.sql` files into the `test` folder.

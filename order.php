@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/style.css?v=20260925d">
+<link rel="stylesheet" href="assets/style.css?v=20260925e">
 </head>
 <body class="site">
 <?php include __DIR__ . '/partials/nav.php'; ?>
@@ -26,6 +26,8 @@ const userPlot = {width:params.get('width') || '', length:params.get('length') |
 let design = null;
 let mods = [];
 let q = null;
+let details = [];       // room-by-room choices from the configurator (via sessionStorage)
+let entriesByMod = {};
 
 async function load(){
   const [dRes, mRes] = await Promise.all([
@@ -41,6 +43,17 @@ async function load(){
     const all = {};
     (await mRes.json()).forEach(g => g.items.forEach(m => { all[m.id] = m; }));
     mods = modIds.map(id => all[id]).filter(Boolean).sort((a, b) => a.tier - b.tier || a.id - b.id);
+    const cfg = readConfig();
+    details = cfg && cfg.design_id === design.id ? (cfg.details || []).filter(d => mods.some(m => m.id === d.modification_id)) : [];
+    details.forEach(d => { (entriesByMod[d.modification_id] = entriesByMod[d.modification_id] || []).push(d); });
+    // Room choices missing (for example the link was opened in another browser): pick them again.
+    if(mods.some(m => needsDetails(m) && !(entriesByMod[m.id] || []).length)){
+      const back = new URLSearchParams(window.location.search);
+      back.delete('mode');
+      window.location.replace('customize.php?' + back);
+      return;
+    }
+    mods = mods.map(m => ROOM_KINDS.includes(m.detail_type) ? Object.assign({}, m, {qty:entriesByMod[m.id].length}) : m);
   }
   if(isCustom && !mods.length){ window.location.replace('customize.php?id=' + design.id); return; }
   q = quote(design, mods, structural, structAddon);
@@ -62,8 +75,7 @@ function summaryBody(){
   let rows = '<div class="sum-line"><span>Design price</span><span>' + fmt(design.base_price) + '</span></div>';
   if(isCustom){
     rows += '<div class="sum-line sub"><span>' + STRUCT_NAME + '</span><span>' + (structural ? 'Included' : 'Not included') + '</span></div>'
-      + '<div class="sum-mods">' + mods.map(m => '<div class="sum-line sub"><span>' + esc(m.label) + '</span><span>'
-      + (m.tier === 4 ? fmt(m.price_min) + '–' + fmt(m.price_max) : fmt(effectiveModPrice(m, structural))) + '</span></div>').join('') + '</div>';
+      + '<div class="sum-mods">' + summaryModLines(mods, entriesByMod, structural) + '</div>';
   } else {
     rows += '<div class="sum-line sub"><span>' + STRUCT_NAME + '</span><span>' + (structAddon ? fmt(structAddonPrice(design.base_price)) : 'Not added') + '</span></div>';
   }
@@ -200,6 +212,7 @@ async function submitOrder(e){
     structural_addon: structAddon,
     structural_included: structural,
     modifications: mods.map(m => m.id),
+    modification_details: details.map(d => ({modification_id:d.modification_id, room_id:d.room_id, action:d.action, custom_note:d.custom_note})),
   };
   let data = {}, res;
   try {

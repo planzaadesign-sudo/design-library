@@ -27,6 +27,7 @@ $facing = !empty($input['facing']) ? (string)$input['facing'] : null;
 $structAddon = !empty($input['structural_addon']);
 $structIncluded = !empty($input['structural_included']);
 $modIds = $input['modifications'] ?? [];
+$rawDetails = $input['modification_details'] ?? [];
 
 // Field-level errors so the order form can show each message next to its field.
 $errors = [];
@@ -36,7 +37,7 @@ if ($city === '' || mb_strlen($city) > 100) $errors['customer_city'] = 'Please t
 if ($plotWidth !== null && ($plotWidth < 1 || $plotWidth > 1000)) $errors['plot_width'] = 'Please type a plot width between 1 and 1000 feet.';
 if ($plotLength !== null && ($plotLength < 1 || $plotLength > 1000)) $errors['plot_length'] = 'Please type a plot length between 1 and 1000 feet.';
 if ($facing !== null && !in_array($facing, $FACINGS, true)) $errors['facing'] = 'Please choose East, West, North or South.';
-if (!is_array($modIds) || count($modIds) > 20) $errors['modifications'] = 'Something went wrong with the changes you picked. Please go back and pick them again.';
+if (!is_array($modIds) || count($modIds) > 20 || !is_array($rawDetails) || count($rawDetails) > 150) $errors['modifications'] = 'Something went wrong with the changes you picked. Please go back and pick them again.';
 
 if (!$designId) {
     http_response_code(400);
@@ -74,6 +75,84 @@ if ($modIds) {
     }
 }
 
+// ---- Room-by-room details ----------------------------------------------------
+// Each room-based change (resize, move a wall, add a bathroom, door/window, room use)
+// is charged once per room picked, so the rooms are checked against this design's
+// own room list. Colour and "other" changes carry one note each.
+$ROOM_KINDS = ['resize', 'partition', 'washroom', 'opening', 'relabel'];
+$ACTIONS = ['increase', 'decrease', 'add', 'remove', 'other'];
+$fail = function ($msg) {
+    http_response_code(400);
+    echo json_encode(['error' => $msg]);
+    exit;
+};
+
+$modsById = [];
+foreach ($mods as $m) $modsById[(int)$m['id']] = $m;
+
+$byMod = [];
+foreach ($rawDetails as $d) {
+    $mid = is_array($d) ? (int)($d['modification_id'] ?? 0) : 0;
+    if (!isset($modsById[$mid])) $fail('Something went wrong with the changes you picked. Please go back and pick them again.');
+    $roomId = isset($d['room_id']) && $d['room_id'] !== '' ? (int)$d['room_id'] : null;
+    $action = isset($d['action']) && $d['action'] !== '' ? (string)$d['action'] : null;
+    if ($action !== null && !in_array($action, $ACTIONS, true)) $fail('Something went wrong with the changes you picked. Please go back and pick them again.');
+    $note = trim((string)($d['custom_note'] ?? ''));
+    if (mb_strlen($note) > 1000) $fail('One of your notes is too long. Please make it shorter.');
+    $byMod[$mid][] = ['room_id' => $roomId, 'action' => $action, 'custom_note' => $note === '' ? null : $note];
+}
+
+$rooms = null; // room id => room_type, loaded only when a room-based change is picked
+$qty = [];
+$detailRows = [];
+$hasOther = false;
+foreach ($mods as $m) {
+    $mid = (int)$m['id'];
+    $kind = $m['detail_type'] ?? null;
+    $entries = $byMod[$mid] ?? [];
+    $label = $m['label'];
+    if (in_array($kind, $ROOM_KINDS, true)) {
+        if ($rooms === null) {
+            $stmt = $pdo->prepare("SELECT id, room_type FROM design_rooms WHERE design_id = ?");
+            $stmt->execute([$designId]);
+            $rooms = [];
+            foreach ($stmt->fetchAll() as $r) $rooms[(int)$r['id']] = $r['room_type'];
+        }
+        if ($rooms) {
+            if (!$entries) $fail('Please pick at least one room for: ' . $label);
+            $seen = [];
+            foreach ($entries as $i => $e) {
+                $rid = $e['room_id'];
+                if ($rid === null || !isset($rooms[$rid]) || isset($seen[$rid])) $fail('Please check the rooms you picked for: ' . $label);
+                $seen[$rid] = true;
+                if ($kind === 'washroom' && $rooms[$rid] !== 'bedroom') $fail('A bathroom can only be added to a bedroom.');
+                if ($kind === 'resize' && !in_array($e['action'], ['increase', 'decrease', 'other'], true)) $fail('Please choose bigger, smaller or other for each room in: ' . $label);
+                if ($kind === 'resize' && $e['action'] === 'other' && $e['custom_note'] === null) $fail('Please tell us what you want for each room in: ' . $label);
+                if (in_array($kind, ['partition', 'opening', 'relabel'], true) && $e['custom_note'] === null) $fail('Please fill in the details for each room in: ' . $label);
+                if ($kind === 'washroom' || $kind === 'opening') $entries[$i]['action'] = 'add';
+                if ($kind === 'partition' || $kind === 'relabel') $entries[$i]['action'] = 'other';
+            }
+        } else {
+            // This design has no room list yet: accept one written request instead.
+            if (count($entries) !== 1 || $entries[0]['room_id'] !== null || $entries[0]['custom_note'] === null) {
+                $fail('Please tell us which rooms you want to change for: ' . $label);
+            }
+            $entries[0]['action'] = 'other';
+        }
+        $qty[$mid] = count($entries);
+    } elseif ($kind === 'colour' || $kind === 'other') {
+        if (count($entries) !== 1 || $entries[0]['room_id'] !== null || $entries[0]['custom_note'] === null) {
+            $fail($kind === 'colour' ? 'Please pick a colour scheme or describe the colours you want.' : 'Please tell us what other changes you want.');
+        }
+        if ($kind === 'other') $hasOther = true;
+        $qty[$mid] = 1;
+    } else {
+        $entries = []; // whole-house change: nothing extra to store
+        $qty[$mid] = 1;
+    }
+    foreach ($entries as $e) $detailRows[] = [$mid, $e['room_id'], $e['action'], $e['custom_note']];
+}
+
 // The price is recalculated here from the database, not taken from the request body.
 // A browser can send anything it wants; only this server-side number is ever stored or charged.
 // assets/app.js mirrors this logic for display only -- keep the two in step.
@@ -103,30 +182,45 @@ foreach ($mods as $m) {
         $totalMax += (int)$m['price_max'];
     } else {
         if ((int)$m['tier'] === 3) $tier3Count++;
-        $effective = (int)$m['price'] - ($structIncluded ? 0 : (int)$m['struct_portion']);
+        // Room-based changes are charged once per room picked.
+        $effective = ((int)$m['price'] - ($structIncluded ? 0 : (int)$m['struct_portion'])) * $qty[(int)$m['id']];
         $total += $effective;
         $totalMax += $effective;
     }
 }
-// Decided here, never taken from the browser.
-$needsReview = $hasTier4 || $tier3Count > 2;
+// Decided here, never taken from the browser. "Any other changes" has no fixed
+// price, so it always goes to the team for pricing.
+$needsReview = $hasTier4 || $tier3Count > 2 || $hasOther;
 
 // PZL- prefix keeps this namespaced separately from any order-numbering
 // the main Planzaa app (built by Babysoft) uses, in case the two are connected later.
 $orderCode = 'PZL-' . strtoupper(bin2hex(random_bytes(3)));
 
 // For manual-review orders total_price holds the low end of the estimate.
-$stmt = $pdo->prepare(
-    "INSERT INTO library_orders
-        (order_code, design_id, customer_name, customer_phone, customer_city, plot_width, plot_length, facing,
-         structural_addon, total_price, status, modifications, structural_included, needs_manual_review, estimated_delivery_days)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'new', ?, ?, ?, ?)"
-);
-$stmt->execute([
-    $orderCode, $designId, $name, $phone, $city, $plotWidth, $plotLength, $facing,
-    $structAddon ? 1 : 0, $total,
-    $isCustom ? json_encode($modIds) : null, $structIncluded ? 1 : 0, $needsReview ? 1 : 0, $days,
-]);
+// The order and its room details are saved together or not at all.
+$pdo->beginTransaction();
+try {
+    $stmt = $pdo->prepare(
+        "INSERT INTO library_orders
+            (order_code, design_id, customer_name, customer_phone, customer_city, plot_width, plot_length, facing,
+             structural_addon, total_price, status, modifications, structural_included, needs_manual_review, estimated_delivery_days)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'new', ?, ?, ?, ?)"
+    );
+    $stmt->execute([
+        $orderCode, $designId, $name, $phone, $city, $plotWidth, $plotLength, $facing,
+        $structAddon ? 1 : 0, $total,
+        $isCustom ? json_encode($modIds) : null, $structIncluded ? 1 : 0, $needsReview ? 1 : 0, $days,
+    ]);
+    $orderId = (int)$pdo->lastInsertId();
+    if ($detailRows) {
+        $stmt = $pdo->prepare("INSERT INTO order_modification_details (order_id, modification_id, room_id, action, custom_note) VALUES (?, ?, ?, ?, ?)");
+        foreach ($detailRows as $row) $stmt->execute(array_merge([$orderId], $row));
+    }
+    $pdo->commit();
+} catch (Throwable $e) {
+    $pdo->rollBack();
+    throw $e;
+}
 
 echo json_encode([
     'order_code' => $orderCode,

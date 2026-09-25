@@ -37,7 +37,9 @@ Change these passwords before going to production.
    then `schema-phase3.sql` (modifications menu + new order columns).
    On a database that already ran phase 3, do not re-import the file —
    run only the `UPDATE modifications ...` block at the bottom of
-   `schema-phase3.sql` (it switches the change labels to simple wording).
+   `schema-phase3.sql` (it switches the change labels to simple wording),
+   then the "Phase 3b" section at the very bottom, once (room lists for
+   the 6 sample designs, room-by-room order details, two new changes).
 3. Fill in `config.php` with real database credentials.
 4. Upload everything except the `.sql` files into the `test` folder.
 5. Visit `test.planzaa.in/seed_accounts.php` once to create logins and

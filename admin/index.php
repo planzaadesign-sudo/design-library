@@ -38,7 +38,7 @@ $staffList = $pdo->query("SELECT * FROM staff ORDER BY name")->fetchAll();
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../assets/style.css?v=20260925d">
+<link rel="stylesheet" href="../assets/style.css?v=20260925e">
 </head>
 <body>
 <div class="topbar"><div class="topbar-inner topnav">

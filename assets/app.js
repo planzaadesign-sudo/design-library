@@ -36,16 +36,19 @@ function effectiveModPrice(mod, structural){
 
 function modPriceLabel(mod, structural){
   if(mod.tier === 4) return fmt(mod.price_min) + ' – ' + fmt(mod.price_max) + ' (approx.)';
-  return '+' + fmt(effectiveModPrice(mod, structural));
+  if(mod.detail_type === 'other') return 'Price later';
+  return '+' + fmt(effectiveModPrice(mod, structural)) + (ROOM_KINDS.includes(mod.detail_type) ? ' per room' : '');
 }
 
 // Same rules as api/order.php:
 //  - as-is purchase (no modifications): base + optional 40% structural package
 //  - customised: base + each modification, minus struct_portion when architectural only
-//  - tier 4 items make the total a range; tier 4 or more than 2 tier 3 items => manual review
+//  - room-based changes are charged once per room picked (m.qty)
+//  - tier 4 items make the total a range; tier 4, more than 2 tier 3 items or
+//    "any other changes" => manual review
 function quote(design, mods, structural, structAddon){
   let min = design.base_price, max = design.base_price, days = design.delivery_days;
-  let tier3 = 0, hasTier4 = false;
+  let tier3 = 0, hasTier4 = false, hasOther = false;
   if(mods.length === 0 && structAddon){
     min += structAddonPrice(design.base_price);
     max = min;
@@ -55,19 +58,69 @@ function quote(design, mods, structural, structAddon){
     if(m.tier === 4){ hasTier4 = true; min += m.price_min; max += m.price_max; }
     else {
       if(m.tier === 3) tier3++;
-      const p = effectiveModPrice(m, structural);
+      if(m.detail_type === 'other') hasOther = true;
+      const p = effectiveModPrice(m, structural) * (m.qty == null ? 1 : m.qty);
       min += p; max += p;
     }
   });
   return {
     min, max, days, tier3, hasTier4,
     isRange: max !== min,
-    needsReview: hasTier4 || tier3 > 2,
+    needsReview: hasTier4 || tier3 > 2 || hasOther,
     structuralWarning: !structural && tier3 > 0,
   };
 }
 
 function totalLabel(q){ return q.isRange ? fmt(q.min) + ' – ' + fmt(q.max) : fmt(q.min); }
+
+// ---- Room-by-room changes ------------------------------------------------------
+// modifications.detail_type decides which picker a change opens. These kinds are
+// picked per room and charged once per room (same rule as api/order.php).
+const ROOM_KINDS = ['resize', 'partition', 'washroom', 'opening', 'relabel'];
+const ROOM_TYPE_LABEL = {bedroom:'Bedroom', bathroom:'Bathroom', kitchen:'Kitchen', living:'Living room', dining:'Dining', pooja:'Pooja room', balcony:'Balcony', parking:'Parking', staircase:'Staircase', store:'Store room', utility:'Utility room', other:'Other'};
+const ROOM_USES = ['Bedroom', 'Bathroom', 'Kitchen', 'Living Room', 'Dining', 'Study', 'Store Room', 'Pooja Room', 'Home Office', 'Other'];
+const COLOUR_SCHEMES = [
+  {name:'Classic White & Grey', colors:['#F4F4F1', '#BFC2C4', '#6F7479']},
+  {name:'Warm Beige & Brown', colors:['#EADCC3', '#C4A47E', '#6B4A2F']},
+  {name:'Modern Charcoal & White', colors:['#FAFAF8', '#45494D', '#1F2124']},
+  {name:'Earthy Terracotta', colors:['#E8D4BE', '#C0673E', '#7A3B22']},
+  {name:'Cool Blue & White', colors:['#F7F9FB', '#A9C6DE', '#2F5D84']},
+  {name:'Cream & Olive', colors:['#F3EBD3', '#A6A86C', '#5B5E33']},
+  {name:'Sand & Dark Brown', colors:['#E3CFA8', '#A8875A', '#4A3222']},
+  {name:'Ivory & Maroon', colors:['#FBF6EA', '#DCCBA9', '#7A2230']},
+];
+
+function needsDetails(mod){ return !!mod.detail_type; }
+
+// Summary rows for the picked changes. entriesByMod: {modId: [{text, incomplete}]}.
+// mods must already carry qty (rooms picked) for room-based changes.
+function summaryModLines(mods, entriesByMod, structural){
+  if(!mods.length) return '<div class="sum-empty">You have not picked any changes yet.</div>';
+  return mods.map(m => {
+    const entries = entriesByMod[m.id] || [];
+    const unit = m.tier === 4 ? null : effectiveModPrice(m, structural);
+    let price;
+    if(m.tier === 4) price = fmt(m.price_min) + '–' + fmt(m.price_max);
+    else if(m.detail_type === 'other') price = 'Price later';
+    else price = fmt(unit * (m.qty == null ? 1 : m.qty));
+    let subs = '';
+    if(ROOM_KINDS.includes(m.detail_type)){
+      subs = entries.length
+        ? entries.map(e => '<div class="sum-room' + (e.incomplete ? ' todo' : '') + '"><span>' + esc(e.text) + '</span>' + (e.room_id ? '<span>' + fmt(unit) + '</span>' : '') + '</div>').join('')
+        : '<div class="sum-room todo"><span>Pick at least one room</span></div>';
+    } else if(m.detail_type === 'colour' || m.detail_type === 'other'){
+      subs = entries.length
+        ? '<div class="sum-room"><span>' + esc(entries[0].text) + '</span></div>'
+        : '<div class="sum-room todo"><span>' + (m.detail_type === 'colour' ? 'Pick a colour scheme' : 'Tell us what you want') + '</span></div>';
+    }
+    return '<div class="sum-group"><div class="sum-line sub"><span>' + esc(m.label) + '</span><span>' + price + '</span></div>' + subs + '</div>';
+  }).join('');
+}
+
+// Passes the configurator's choices (including room details and notes) to the order page.
+const CONFIG_KEY = 'planzaa_config';
+function saveConfig(cfg){ try { sessionStorage.setItem(CONFIG_KEY, JSON.stringify(cfg)); } catch(e) {} }
+function readConfig(){ try { return JSON.parse(sessionStorage.getItem(CONFIG_KEY) || 'null'); } catch(e) { return null; } }
 
 // Customer-facing wording is deliberately plain: written for someone who has
 // never hired an architect. Keep new text just as simple.

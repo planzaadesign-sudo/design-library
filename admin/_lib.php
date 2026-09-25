@@ -199,6 +199,9 @@ function schema_problems() {
             if (!in_array($c, $have, true)) $problems[] = "Column <code>$t.$c</code> is missing &#8212; run $where.";
         }
     }
+    if (!$problems && !phase5_ready()) {
+        $problems[] = 'The design similarity columns (plot shape, main door, stairs, style&#8230;) are missing &#8212; run schema-phase5.sql.';
+    }
     return array_values(array_unique($problems));
 }
 
@@ -222,6 +225,9 @@ function detail_text(array $d, $kind) {
 
 // Review box for one freelancer submission (used on the brief and submission pages).
 function review_block(array $s) {
+    // Brief parameters + the 3 closest library designs, for the side-by-side check.
+    $brief = brief_params($s['brief_id']);
+    $sim = $brief ? render_similarity_review($brief, $s, '../') : ['html' => '', 'matches' => []];
     $file = $s['cad_file_path'] ? '<a class="btn btn-small" href="../' . h($s['cad_file_path']) . '" download>Download file</a>' : '<span class="muted">No file attached</span>';
     $html = '<div class="review-box' . ($s['review_status'] === 'pending' && !$s['published'] ? ' pending' : '') . '">'
         . '<div class="review-top"><div><strong>' . h($s['freelancer_name']) . '</strong> <span class="muted">submitted ' . fdate($s['submitted_at'], true) . '</span></div>'
@@ -230,13 +236,15 @@ function review_block(array $s) {
     if ($s['notes']) $html .= '<p class="note-text"><span class="muted">Freelancer note:</span> ' . nl2br(h($s['notes'])) . '</p>';
     if ($s['review_notes']) $html .= '<p class="note-text"><span class="muted">Review notes' . ($s['reviewer_name'] ? ' by ' . h($s['reviewer_name']) : '') . ':</span> ' . nl2br(h($s['review_notes'])) . '</p>';
     if ($s['review_status'] === 'pending') {
+        $html .= $sim['html'];
         $html .= '<form method="post" class="review-form" data-saving>' . csrf_field() . return_field()
             . '<input type="hidden" name="action" value="sub_review"><input type="hidden" name="submission_id" value="' . (int)$s['id'] . '">'
+            . render_review_extras($sim['matches'])
             . '<label for="rn' . (int)$s['id'] . '">Notes for the freelancer <span class="muted">(needed when sending back)</span></label>'
             . '<textarea id="rn' . (int)$s['id'] . '" name="review_notes" rows="3" maxlength="2000"></textarea>'
             . '<div class="adm-actions left">'
-            . '<button class="btn btn-primary" name="outcome" value="approve">Approve</button>'
-            . '<button class="btn" name="outcome" value="approve_edits">Approve &#8212; in-house will make small fixes</button>'
+            . '<button class="btn btn-primary" name="outcome" value="approve" data-needs-confirm>Approve</button>'
+            . '<button class="btn" name="outcome" value="approve_edits" data-needs-confirm>Approve &#8212; in-house will make small fixes</button>'
             . '<button class="btn btn-warn" name="outcome" value="reject" data-needs-notes>Send back for changes</button>'
             . '</div></form>';
     } elseif ($s['review_status'] === 'approved' && !$s['published']) {

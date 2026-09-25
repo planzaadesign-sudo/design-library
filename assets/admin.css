@@ -218,3 +218,6 @@ tr.open td{background:var(--accent-soft) !important;}
 .adm-confirm::backdrop{background:rgba(0,0,0,.4);}
 .adm-confirm h2{font-size:19px; color:var(--attention); margin-bottom:8px;}
 .adm-confirm p{margin:0; font-size:14px;}
+.param-head{margin:20px 0 4px; font-size:15px;}
+.adm .bf-section{background:var(--bg);}
+.adm .opt-pills input, .adm .opt-cards input, .adm .yn input{width:1px !important; padding:0; border:0;}

@@ -19,6 +19,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->execute([$myId, $briefId]);
         if ($stmt->rowCount() === 0) {
             $claimError = 'Someone else just claimed this brief a moment before you.';
+        } else {
+            // Go straight to the claimed brief, where similar library designs are shown.
+            $tab = 'mine';
         }
     }
     if (isset($_POST['submit_design'])) {
@@ -55,6 +58,7 @@ function fmt($n) { return '&#8377;' . number_format((int)$n); }
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/style.css?v=20260925g">
+<link rel="stylesheet" href="../assets/brief-form.css?v=1">
 </head>
 <body>
 <div class="topbar"><div class="topbar-inner topnav">
@@ -96,6 +100,8 @@ function fmt($n) { return '&#8377;' . number_format((int)$n); }
   <div class="item-card"><div class="item-top">
     <div><div class="item-title"><?= htmlspecialchars($b['title']) ?></div><div class="item-meta">Due <?= htmlspecialchars($b['deadline']) ?></div></div>
     <span class="badge b-blue">Claimed</span></div>
+    <div class="fl-brief-notes item-notes"><?= htmlspecialchars($b['requirements']) ?><?php if (!empty($b['differentiation_notes'])): ?><strong>What should be different about your design</strong><?= htmlspecialchars($b['differentiation_notes']) ?><?php endif; ?></div>
+    <div class="fl-sim" data-brief="<?= (int)$b['id'] ?>" hidden></div>
     <form method="POST" enctype="multipart/form-data" style="margin-top:10px">
       <input type="hidden" name="brief_id" value="<?= $b['id'] ?>">
       <div class="field"><label>CAD file</label><input type="file" name="cad_file"></div>
@@ -137,5 +143,34 @@ function fmt($n) { return '&#8377;' . number_format((int)$n); }
 <p class="section-gap">Royalty shown here is illustrative &#8212; the real split still needs to be decided.</p>
 <?php endif; ?>
 </div>
+<script>
+// Similar designs already in the library for each claimed brief (api/brief-rooms.php).
+(function(){
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  document.querySelectorAll('.fl-sim[data-brief]').forEach(async box => {
+    try {
+      const res = await fetch('../api/brief-rooms.php?brief_id=' + encodeURIComponent(box.dataset.brief), {credentials:'same-origin'});
+      const data = await res.json();
+      if(!res.ok || !data.ready) return;
+      const tone = s => s > 70 ? 'high' : s >= 50 ? 'mid' : 'low';
+      let html = '<h4>Designs already in our library that are similar to this brief</h4>';
+      if(data.designs.length){
+        html += '<p class="fl-warn">Your design must look noticeably different from these. Designs that look too similar will be sent back for changes.</p>'
+          + '<div class="fl-cards">' + data.designs.map(d => '<div class="fl-card"><div class="sim-art">' + d.floor_plan_svg + '</div>'
+          + '<strong>' + esc(d.name) + '</strong>'
+          + '<span class="sim-score ' + tone(d.score) + '"><span class="sim-bar"><i style="width:' + d.score + '%"></i></span><b>' + d.score + '% similar</b></span>'
+          + '<ul><li>' + esc(d.plot) + ' &middot; ' + esc(d.bhk) + ' &middot; ' + esc(d.floors) + '</li><li>Style: ' + esc(d.style) + '</li><li>Main door: ' + esc(d.entrance) + '</li></ul></div>').join('') + '</div>';
+      } else {
+        html += '<p class="fl-count">Nothing similar in the library yet.</p>';
+      }
+      if(data.similar_briefs > 0){
+        html += '<p class="fl-count">There ' + (data.similar_briefs === 1 ? 'is 1 other brief' : 'are ' + data.similar_briefs + ' other briefs') + ' with similar requirements being worked on by other designers right now. Be creative!</p>';
+      }
+      box.innerHTML = html;
+      box.hidden = false;
+    } catch(e) { /* optional section */ }
+  });
+})();
+</script>
 </body>
 </html>

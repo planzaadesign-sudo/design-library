@@ -24,6 +24,24 @@ MariaDB database before delivery. See "What was tested" at the bottom.
   served, race-safe), submit designs with file upload, submission history
   with review feedback, earnings view.
 
+## Design similarity checks (no duplicate designs)
+
+`includes/similarity.php` scores two sets of design parameters from 0 to 100
+(24 weighted parameters: layout-changing ones count most, looks count least).
+It is used at four points:
+
+1. **Posting a brief** (admin and in-house use the same form, in
+   `includes/brief_ui.php`): before saving, `api/similarity-check.php` lists
+   similar designs and briefs. At 70% or more the poster must confirm; the
+   server refuses unconfirmed near-duplicates even if the browser check is skipped.
+2. **Freelancer's claimed brief**: shows the 3 closest library designs
+   (`api/brief-rooms.php`) and how many similar briefs are in progress.
+3. **Reviewing a submission**: side-by-side with the 3 closest designs, a
+   parameter table, a required "different enough" confirmation, and
+   ready-made "too similar to …" notes.
+4. **Publishing**: the new design copies every parameter from its brief
+   (`includes/briefs.php`).
+
 ## Test login accounts
 
 Created by `seed_accounts.php` — delete that file after running it once.
@@ -46,7 +64,9 @@ Change these passwords before going to production.
    then the "Phase 3b" section at the very bottom, once (room lists for
    the 6 sample designs, room-by-room order details, two new changes),
    then the "Phase 3c" section, once (columns for "call me" requests),
-   then `schema-phase4.sql`, once (admin dashboard: when an order was assigned).
+   then `schema-phase4.sql`, once (admin dashboard: when an order was assigned),
+   then `schema-phase5.sql`, once (design similarity checks: 19 design
+   parameters on briefs and designs, plus floors/BHK on briefs).
    If anything is missing, the admin dashboard lists exactly what to run.
 3. Fill in `config.php` with real database credentials.
 4. Upload everything except the `.sql` files into the `test` folder.

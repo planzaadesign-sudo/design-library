@@ -25,6 +25,10 @@ if ($briefId):
     <section class="adm-card">
       <h3>Requirements</h3>
       <p class="note-text"><?= nl2br(h($b['requirements'])) ?></p>
+      <?php if (!empty($b['differentiation_notes'])): ?>
+        <h3 class="param-head">What should be different</h3>
+        <p class="note-text"><?= nl2br(h($b['differentiation_notes'])) ?></p>
+      <?php endif; ?>
       <dl class="kv">
         <dt>Plot</dt><dd><?= $b['plot_width'] ? (int)$b['plot_width'] . ' &times; ' . (int)$b['plot_length'] . ' ft' : '—' ?><?= $b['facing'] ? ', ' . h($b['facing']) . ' facing' : '' ?></dd>
         <dt>House type</dt><dd><?= h($b['house_type'] ?: '—') ?></dd>
@@ -36,14 +40,12 @@ if ($briefId):
       <p class="muted small-note">The date a brief was claimed is not recorded yet.</p>
     </section>
   </div>
-  <div class="detail-col">
-    <section class="adm-card">
-      <h3>Submissions (<?= count($subs) ?>)</h3>
-      <?php if (!$subs): ?><p class="empty">No work submitted yet.</p><?php endif; ?>
-      <?php foreach ($subs as $s) echo review_block($s); ?>
-    </section>
-  </div>
 </div>
+<section class="adm-card">
+  <h3>Submissions (<?= count($subs) ?>)</h3>
+  <?php if (!$subs): ?><p class="empty">No work submitted yet.</p><?php endif; ?>
+  <?php foreach ($subs as $s) echo review_block($s); ?>
+</section>
 <?php
     return;
 endif;
@@ -57,30 +59,20 @@ $showForm = !empty($_GET['new']);
     <a class="fpill<?= $status === '' ? ' on' : '' ?>" href="<?= h(url(['tab' => 'briefs'])) ?>">All</a>
     <?php foreach (BRIEF_STATUS as $k => $label): ?><a class="fpill<?= $status === $k ? ' on' : '' ?>" href="<?= h(url(['tab' => 'briefs', 'status' => $k])) ?>"><?= h($label) ?></a><?php endforeach; ?>
   </div></div>
-  <a class="btn btn-primary" href="<?= h(url(['tab' => 'briefs', 'new' => 1])) ?>#briefForm">+ Post new brief</a>
+  <a class="btn btn-primary" href="<?= h(url(['tab' => 'briefs', 'new' => 1])) ?>#briefFormCard">+ Post new brief</a>
 </div>
 
 <?php if ($showForm): ?>
-<section class="adm-card form-card" id="briefForm">
+<section class="adm-card form-card" id="briefFormCard">
   <h2>Post a new brief</h2>
-  <form method="post" data-saving>
-    <?= csrf_field() ?><?= return_field() ?>
-    <input type="hidden" name="action" value="brief_save">
-    <div class="form-grid-adm">
-      <label class="span-2">Title<input name="title" required maxlength="150" value="<?= h(old('title')) ?>"></label>
-      <label>Plot width (ft)<input name="plot_width" type="number" min="1" value="<?= h(old('plot_width')) ?>"></label>
-      <label>Plot length (ft)<input name="plot_length" type="number" min="1" value="<?= h(old('plot_length')) ?>"></label>
-      <label>Facing<select name="facing"><option value="">Any</option><?php foreach (FACINGS as $x): ?><option <?= old('facing') === $x ? 'selected' : '' ?>><?= $x ?></option><?php endforeach; ?></select></label>
-      <label>House type<input name="house_type" maxlength="50" placeholder="e.g. G+1, 3BHK" value="<?= h(old('house_type')) ?>"></label>
-      <label>Payout (&#8377;)<input name="payout" type="number" min="1" required value="<?= h(old('payout')) ?>"></label>
-      <label>Deadline<input name="deadline" type="date" required value="<?= h(old('deadline')) ?>"></label>
-      <label class="span-3">Requirements<textarea name="requirements" rows="4" required placeholder="Layout, vastu notes, style &#8212; anything a freelancer needs to know"><?= h(old('requirements')) ?></textarea></label>
-    </div>
-    <div class="adm-actions">
-      <a class="btn" href="<?= h(url(['tab' => 'briefs'])) ?>">Cancel</a>
-      <button class="btn btn-primary" type="submit">Post brief</button>
-    </div>
-  </form>
+  <p class="muted">Answer each question so we can check the library for similar designs before a freelancer starts work.</p>
+  <?= render_brief_form($OLD, [
+      'hidden' => csrf_field() . return_field() . '<input type="hidden" name="action" value="brief_save">',
+      'api' => '../api/similarity-check.php',
+      'design_url' => '../design.php?id=',
+      'brief_url' => 'index.php?tab=briefs&id=',
+      'cancel' => url(['tab' => 'briefs']),
+  ]) ?>
 </section>
 <?php endif;
 

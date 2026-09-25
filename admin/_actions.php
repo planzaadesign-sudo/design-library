@@ -59,13 +59,18 @@ case 'design_save':
     if ($bhk < 1 || $bhk > 10) $fail('BHK must be between 1 and 10.');
     if ($price < 1000 || $price > 10000000) $fail('Base price must be between ₹1,000 and ₹1,00,00,000.');
     if ($days < 1 || $days > 365) $fail('Delivery days must be between 1 and 365.');
+    // The similarity parameters (plot shape, main door, stairs, style...) -- same questions as a brief.
+    [$params, $err] = validate_brief_input($_POST, true);
+    if ($err) $fail($err);
+    $cols = array_merge(['name', 'plot_width', 'plot_length', 'facing', 'floors', 'bhk', 'base_price', 'delivery_days', 'is_active'], SIM_NEW_COLUMNS);
+    $vals = array_merge([$name, $w, $l, $facing, $floors, $bhk, $price, $days, $active], array_map(function ($c) use ($params) { return $params[$c]; }, SIM_NEW_COLUMNS));
     if ($id) {
-        q("UPDATE designs SET name = ?, plot_width = ?, plot_length = ?, facing = ?, floors = ?, bhk = ?, base_price = ?, delivery_days = ?, is_active = ? WHERE id = ?",
-            [$name, $w, $l, $facing, $floors, $bhk, $price, $days, $active, $id]);
+        q("UPDATE designs SET " . implode(' = ?, ', $cols) . " = ? WHERE id = ?", array_merge($vals, [$id]));
         flash('Design saved.');
     } else {
-        q("INSERT INTO designs (name, plot_width, plot_length, facing, floors, bhk, base_price, delivery_days, variant, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            [$name, $w, $l, $facing, $floors, $bhk, $price, $days, random_int(0, 2), $active]);
+        $cols[] = 'variant';
+        $vals[] = random_int(0, 2);
+        q("INSERT INTO designs (" . implode(', ', $cols) . ") VALUES (" . implode(', ', array_fill(0, count($cols), '?')) . ")", $vals);
         $id = (int)getDB()->lastInsertId();
         flash('Design added. Now add its rooms so customers can pick them when changing the design.');
     }
@@ -155,19 +160,11 @@ case 'mod_toggle':
 
 // ---- Briefs and submissions -------------------------------------------------------------
 case 'brief_save':
-    $title = $str('title'); $req = $str('requirements');
-    $payout = $int('payout'); $deadline = $str('deadline');
-    $w = $str('plot_width') === '' ? null : $int('plot_width');
-    $l = $str('plot_length') === '' ? null : $int('plot_length');
-    $facing = $str('facing'); $houseType = $str('house_type');
-    if ($title === '' || mb_strlen($title) > 150) $fail('Please give the brief a title (up to 150 characters).');
-    if ($req === '') $fail('Please write the requirements.');
-    if ($payout < 1) $fail('Please enter the payout.');
-    $d = DateTime::createFromFormat('Y-m-d', $deadline);
-    if (!$d || $d->format('Y-m-d') !== $deadline) $fail('Please choose a deadline date.');
-    if ($facing !== '' && !in_array($facing, FACINGS, true)) $fail('Please choose a facing.');
-    q("INSERT INTO briefs (title, plot_width, plot_length, facing, house_type, requirements, payout, deadline, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        [$title, $w, $l, $facing === '' ? null : $facing, mb_substr($houseType, 0, 50), $req, $payout, $deadline, $myId]);
+    // Same expanded form and similarity rule as the in-house dashboard (includes/briefs.php).
+    [$d, $err] = validate_brief_input($_POST);
+    if ($err) $fail($err);
+    $err = save_brief($d, $myId, !empty($_POST['confirm_similar']));
+    if ($err) $fail($err);
     flash('Brief posted. Freelancers can now claim it.');
     header('Location: ' . url(['tab' => 'briefs']));
     exit;
@@ -182,6 +179,7 @@ case 'sub_review':
     if ($sub['review_status'] !== 'pending') $fail('This submission has already been reviewed.');
     if ($outcome === 'reject' && $notes === '') $fail('Please write what the freelancer should fix before sending it back.');
     if (!in_array($outcome, ['approve', 'approve_edits', 'reject'], true)) $fail('Please choose a review action.');
+    if ($outcome !== 'reject' && empty($_POST['confirm_different'])) $fail('Please check the similarity confirmation before approving.');
     if ($outcome === 'approve_edits') $notes = trim('Approved. Our in-house team will make small fixes before publishing. ' . $notes);
     $status = $outcome === 'reject' ? 'rejected' : 'approved';
     q("UPDATE submissions SET review_status = ?, reviewer_id = ?, review_notes = ?, reviewed_at = NOW() WHERE id = ?", [$status, $myId, $notes, $subId]);
@@ -190,30 +188,10 @@ case 'sub_review':
     go_back(['tab' => 'submissions', 'id' => $subId]);
 
 case 'sub_publish':
-    // Same steps as the in-house "Standardize & publish" button.
+    // Same routine as the in-house "Standardize & publish" button: copies every brief parameter.
     $subId = $int('submission_id');
-    $sub = q("SELECT s.*, b.title, b.plot_width, b.plot_length, b.facing, b.house_type, b.payout
-              FROM submissions s JOIN briefs b ON s.brief_id = b.id WHERE s.id = ?", [$subId])->fetch();
-    if (!$sub || $sub['review_status'] !== 'approved' || $sub['published']) $fail('Only approved, unpublished submissions can be published.');
-    $price = max(15000, (int)$sub['payout'] * 6);
-    $pdo = getDB();
-    $pdo->beginTransaction();
-    try {
-        q("INSERT INTO designs (name, plot_width, plot_length, facing, floors, bhk, base_price, delivery_days, variant, source_submission_id, standardized_by)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", [
-            $sub['title'], $sub['plot_width'] ?: 30, $sub['plot_length'] ?: 40, $sub['facing'] ?: 'East',
-            $sub['house_type'] ?: 'G+1', 3, $price, 12, random_int(0, 2), $subId, $myId,
-        ]);
-        $designId = (int)$pdo->lastInsertId();
-        q("UPDATE submissions SET published = 1 WHERE id = ?", [$subId]);
-        q("UPDATE briefs SET status = 'published' WHERE id = ?", [$sub['brief_id']]);
-        // Illustrative royalty split, same placeholder rate as the in-house dashboard.
-        q("UPDATE freelancers SET earnings = earnings + ? WHERE id = ?", [(int)round($price * 0.1), $sub['freelancer_id']]);
-        $pdo->commit();
-    } catch (Throwable $e) {
-        $pdo->rollBack();
-        throw $e;
-    }
+    $designId = publish_submission($subId, $myId);
+    if (!$designId) $fail('Only approved, unpublished submissions can be published.');
     flash('Published as a new design. Check its details and add its rooms.');
     header('Location: ' . url(['tab' => 'designs', 'edit' => $designId]) . '#designForm');
     exit;

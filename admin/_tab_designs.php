@@ -47,6 +47,13 @@ $v = function ($key, $default = '') use ($editing) {
       <label>Delivery days<input name="delivery_days" type="number" min="1" max="365" required value="<?= h($v('delivery_days', 12)) ?>"></label>
       <label class="check"><input type="checkbox" name="is_active" value="1" <?= $v('is_active', 1) ? 'checked' : '' ?>> Show to customers</label>
     </div>
+    <h3 class="param-head">Design details for similarity checks</h3>
+    <p class="muted">These answers let the team spot duplicates before commissioning a new design. Fill them in to match the drawings.</p>
+    <div class="bf"><?php
+      $pv = [];
+      foreach (SIM_NEW_COLUMNS as $c) { $o = old($c, null); $pv[$c] = $o !== null ? $o : ($editing[$c] ?? null); }
+      echo render_param_sections($pv, false);
+    ?></div>
     <div class="adm-actions">
       <a class="btn" href="<?= h(url(['tab' => 'designs'])) ?>">Cancel</a>
       <button class="btn btn-primary" type="submit">Save design</button>

@@ -6,6 +6,7 @@ requireStaff('admin');
 // Tab files and helpers check this before doing anything, so they can never run on their own.
 define('PLANZAA_ADMIN', true);
 require __DIR__ . '/_lib.php';
+require_once __DIR__ . '/../includes/brief_ui.php'; // similarity engine, brief form, publishing
 
 $pdo = getDB();
 $myId = (int)$_SESSION['staff_id'];
@@ -54,7 +55,8 @@ if (!$problems) {
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/style.css?v=20260925g">
-<link rel="stylesheet" href="../assets/admin.css?v=1">
+<link rel="stylesheet" href="../assets/admin.css?v=2">
+<link rel="stylesheet" href="../assets/brief-form.css?v=1">
 </head>
 <body class="adm-body">
 <div class="adm" id="adm">
@@ -108,5 +110,6 @@ if (!$problems) {
   </form>
 </dialog>
 <script src="../assets/admin.js?v=1"></script>
+<script src="../assets/brief-form.js?v=1"></script>
 </body>
 </html>

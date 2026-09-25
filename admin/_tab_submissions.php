@@ -18,8 +18,8 @@ if ($subId):
   <h2 class="detail-title"><?= h($s['title']) ?></h2>
   <div class="detail-sub"><a href="<?= h(url(['tab' => 'briefs', 'id' => $s['brief_id']])) ?>">Open the brief &rarr;</a></div>
 </div></div>
-<div class="detail-grid">
-  <div class="detail-col">
+<div>
+  <div>
     <section class="adm-card">
       <h3>What was asked</h3>
       <p class="note-text"><?= nl2br(h($brief['requirements'] ?? '')) ?></p>
@@ -30,10 +30,8 @@ if ($subId):
       </dl>
     </section>
   </div>
-  <div class="detail-col">
-    <section class="adm-card"><h3>Review</h3><?= review_block($s) ?></section>
-  </div>
 </div>
+<section class="adm-card"><h3>Review</h3><?= review_block($s) ?></section>
 <?php
     return;
 endif;

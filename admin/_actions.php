@@ -15,7 +15,10 @@ case 'order_assign':
     $orderId = $int('order_id');
     $staffId = $int('staff_id');
     if ($staffId && !q("SELECT id FROM staff WHERE id = ?", [$staffId])->fetchColumn()) $fail('That team member no longer exists.');
-    q("UPDATE library_orders SET assigned_to = ?, assigned_at = " . ($staffId ? "NOW()" : "NULL") . " WHERE id = ?", [$staffId ?: null, $orderId]);
+    // A manual choice replaces the automatic one (and its reason / overload flag).
+    $manual = $staffId ? 'Assigned by ' . $_SESSION['staff_name'] . ' on ' . date('j M Y') . '.' : null;
+    q("UPDATE library_orders SET assigned_to = ?, assigned_at = " . ($staffId ? "NOW()" : "NULL") . ", auto_assigned = 0, overload_warning = 0, assignment_reason = ? WHERE id = ?",
+        [$staffId ?: null, $manual, $orderId]);
     flash($staffId ? 'Order assigned.' : 'Order unassigned.');
     go_back(['tab' => 'orders', 'id' => $orderId]);
 
@@ -65,24 +68,73 @@ case 'design_save':
     $cols = array_merge(['name', 'plot_width', 'plot_length', 'facing', 'floors', 'bhk', 'base_price', 'delivery_days', 'is_active'], SIM_NEW_COLUMNS);
     $vals = array_merge([$name, $w, $l, $facing, $floors, $bhk, $price, $days, $active], array_map(function ($c) use ($params) { return $params[$c]; }, SIM_NEW_COLUMNS));
     if ($id) {
+        // A draft only goes live through "Standardize & publish" (which checks its files).
+        $isDraft = q("SELECT published_at IS NULL FROM designs WHERE id = ?", [$id])->fetchColumn();
+        if ($isDraft) $vals[array_search('is_active', $cols, true)] = 0;
         q("UPDATE designs SET " . implode(' = ?, ', $cols) . " = ? WHERE id = ?", array_merge($vals, [$id]));
-        flash('Design saved.');
+        flash($isDraft ? 'Draft saved. Upload its files, then publish it.' : 'Design saved. (Its design code stays the same.)');
     } else {
-        $cols[] = 'variant';
-        $vals[] = random_int(0, 2);
-        q("INSERT INTO designs (" . implode(', ', $cols) . ") VALUES (" . implode(', ', array_fill(0, count($cols), '?')) . ")", $vals);
-        $id = (int)getDB()->lastInsertId();
-        flash('Design added. Now add its rooms so customers can pick them when changing the design.');
+        // Added directly by the admin: no brief or designer; the admin is the whole audit trail.
+        // It has no files yet, so it stays hidden until they are uploaded (then use the switch).
+        $vals[array_search('is_active', $cols, true)] = 0;
+        $pdo = getDB();
+        $pdo->beginTransaction();
+        try {
+            $code = generateDesignCode($pdo, $facing, $floors, $bhk);
+            $cols = array_merge($cols, ['variant', 'design_code', 'brief_created_by', 'brief_created_at', 'reviewed_by', 'reviewed_at', 'approved_by', 'approved_at', 'published_at']);
+            $vals = array_merge($vals, [random_int(0, 2), $code, $myId, date('Y-m-d H:i:s'), $myId, date('Y-m-d H:i:s'), $myId, date('Y-m-d H:i:s'), date('Y-m-d H:i:s')]);
+            q("INSERT INTO designs (" . implode(', ', $cols) . ") VALUES (" . implode(', ', array_fill(0, count($cols), '?')) . ")", $vals);
+            $id = (int)$pdo->lastInsertId();
+            $pdo->commit();
+        } catch (Throwable $e) {
+            $pdo->rollBack();
+            throw $e;
+        }
+        flash('Design added as ' . $code . '. It stays hidden from customers until its required files are uploaded — upload them below, then turn it on in the designs list.');
+        header('Location: ' . url(['tab' => 'designs', 'edit' => $id]) . '#designFiles');
+        exit;
     }
     header('Location: ' . url(['tab' => 'designs', 'rooms' => $id]) . '#rooms');
     exit;
 
 case 'design_toggle':
     $id = $int('id');
-    q("UPDATE designs SET is_active = 1 - is_active WHERE id = ?", [$id]);
+    if (q("SELECT published_at IS NULL FROM designs WHERE id = ?", [$id])->fetchColumn()) $fail('This design is still a draft. Upload its files and publish it first.');
+    // Showing a design to customers needs its required files (the same rule as publishing).
+    if (!q("SELECT is_active FROM designs WHERE id = ?", [$id])->fetchColumn() && ($missing = missing_required_slots($id))) {
+        $fail('This design can\'t be shown to customers yet — these files are still missing: ' . implode(', ', $missing) . '.', ['tab' => 'designs', 'edit' => $id]);
+    }
+    q("UPDATE designs SET is_active = 1 - is_active WHERE id = ? AND published_at IS NOT NULL", [$id]);
     $on = (int)q("SELECT is_active FROM designs WHERE id = ?", [$id])->fetchColumn();
     flash($on ? 'Design is now visible to customers.' : 'Design hidden from customers. Existing orders still show it.');
     go_back(['tab' => 'designs']);
+
+// ---- Design files (standard slots) -------------------------------------------------------
+case 'slot_upload':
+    $design = q("SELECT * FROM designs WHERE id = ?", [$int('design_id')])->fetch();
+    $slot = $str('slot');
+    if (!$design) $fail('Design not found.', ['tab' => 'designs']);
+    $f = $_FILES['file'] ?? null;
+    if (!$f || $f['error'] !== UPLOAD_ERR_OK || !is_uploaded_file($f['tmp_name'])) $fail(upload_error_text($f['error'] ?? UPLOAD_ERR_NO_FILE), ['tab' => 'designs', 'edit' => $design['id']]);
+    $err = store_slot_file($design, $slot, $f['tmp_name'], $f['name'], (int)$f['size'], true, $myId);
+    if ($err) $fail(FILE_SLOTS[$slot]['label'] . ': ' . $err, ['tab' => 'designs', 'edit' => $design['id']]);
+    flash(FILE_SLOTS[$slot]['label'] . ' uploaded.');
+    go_back(['tab' => 'designs', 'edit' => $design['id']]);
+
+case 'slot_delete':
+    $designId = $int('design_id');
+    $slot = $str('slot');
+    flash(isset(FILE_SLOTS[$slot]) && delete_slot_file($designId, $slot) ? FILE_SLOTS[$slot]['label'] . ' deleted.' : 'There was no file to delete.');
+    go_back(['tab' => 'designs', 'edit' => $designId]);
+
+case 'publish_draft':
+    $designId = $int('design_id');
+    [$ok, $err] = publish_design_draft($designId, $myId);
+    if ($err) $fail($err, ['tab' => 'designs', 'edit' => $designId]);
+    $code = q("SELECT design_code FROM designs WHERE id = ?", [$designId])->fetchColumn();
+    flash('Published as ' . $code . '. It is now live on the website.');
+    header('Location: ' . url(['tab' => 'designs', 'edit' => $designId]) . '#history');
+    exit;
 
 case 'room_save':
     $designId = $int('design_id');
@@ -184,14 +236,20 @@ case 'sub_review':
     $status = $outcome === 'reject' ? 'rejected' : 'approved';
     q("UPDATE submissions SET review_status = ?, reviewer_id = ?, review_notes = ?, reviewed_at = NOW() WHERE id = ?", [$status, $myId, $notes, $subId]);
     q("UPDATE briefs SET status = ? WHERE id = ?", [$status === 'approved' ? 'approved' : 'needs_revision', $sub['brief_id']]);
-    flash($status === 'approved' ? 'Submission approved. You can now standardise and publish it.' : 'Sent back to the freelancer with your notes.');
+    // Approval creates the draft design; the designer's files go into their slots straight away.
+    if ($status === 'approved') create_draft_from_submission($subId, $myId);
+    flash($status === 'approved' ? 'Approved. A draft design was created — upload its files, then publish it.' : 'Sent back to the freelancer with your notes.');
     go_back(['tab' => 'submissions', 'id' => $subId]);
 
 case 'sub_publish':
     // Same routine as the in-house "Standardize & publish" button: copies every brief parameter.
     $subId = $int('submission_id');
-    $designId = publish_submission($subId, $myId);
-    if (!$designId) $fail('Only approved, unpublished submissions can be published.');
+    [$designId, $err] = publish_submission($subId, $myId);
+    if ($err) {
+        $draft = draft_for_submission($subId);
+        if ($draft) { keep_old([]); flash($err, 'err'); header('Location: ' . url(['tab' => 'designs', 'edit' => $draft['id']]) . '#designFiles'); exit; }
+        $fail($err);
+    }
     flash('Published as a new design. Check its details and add its rooms.');
     header('Location: ' . url(['tab' => 'designs', 'edit' => $designId]) . '#designForm');
     exit;
@@ -253,6 +311,39 @@ case 'freelancer_add':
     exit;
 
 // ---- Settings -------------------------------------------------------------------------------
+// ---- Order notes and files ----------------------------------------------------------------
+case 'order_note':
+    $orderId = $int('order_id');
+    $note = $str('note');
+    if ($note === '') $fail('Please write the note first.', ['tab' => 'orders', 'id' => $orderId]);
+    if (mb_strlen($note) > 5000) $fail('Please keep the note shorter.', ['tab' => 'orders', 'id' => $orderId]);
+    if (!q("SELECT id FROM library_orders WHERE id = ?", [$orderId])->fetchColumn()) $fail('Order not found.', ['tab' => 'orders']);
+    add_order_note($orderId, $myId, $_SESSION['staff_name'], $note);
+    flash('Note saved.');
+    go_back(['tab' => 'orders', 'id' => $orderId]);
+
+case 'order_file':
+    $order = q("SELECT id, order_code FROM library_orders WHERE id = ?", [$int('order_id')])->fetch();
+    if (!$order) $fail('Order not found.', ['tab' => 'orders']);
+    $err = store_order_file($order, $_FILES['file'] ?? [], $myId);
+    if ($err) $fail($err, ['tab' => 'orders', 'id' => $order['id']]);
+    flash('File attached to the order.');
+    go_back(['tab' => 'orders', 'id' => $order['id']]);
+
+case 'settings_save':
+    $max = $int('max_active_orders_per_person');
+    $email = $str('admin_notification_email');
+    $site = rtrim($str('site_url'), '/');
+    if ($max < 1 || $max > 100) $fail('The workload limit must be between 1 and 100 orders.');
+    if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) $fail('Please enter a valid email address (or leave it empty).');
+    if (!preg_match('#^https?://[A-Za-z0-9.-]+(:[0-9]+)?(/[A-Za-z0-9._/-]*)?$#', $site)) $fail('Please enter the website address, like https://test.planzaa.in');
+    setSettingValue(getDB(), 'max_active_orders_per_person', $max);
+    setSettingValue(getDB(), 'admin_notification_email', $email);
+    setSettingValue(getDB(), 'site_url', $site);
+    flash('Settings saved.');
+    header('Location: ' . url(['tab' => 'settings']));
+    exit;
+
 case 'password_change':
     $hash = q("SELECT password_hash FROM staff WHERE id = ?", [$myId])->fetchColumn();
     $new = (string)($_POST['new_password'] ?? '');

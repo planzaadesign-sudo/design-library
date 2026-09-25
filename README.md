@@ -70,7 +70,13 @@ Change these passwords before going to production.
    then `seed-design-params.sql` (real parameters for the 6 sample designs,
    so the similarity check does not see them as identical; safe to re-run),
    then `schema-phase6.sql`, once (preview image for designer submissions;
-   the in-house and designer dashboards show a setup message until it is run).
+   the in-house and designer dashboards show a setup message until it is run),
+   then `schema-phase7.sql`, once (design codes like PZ-E-G1-3B-0001 for every
+   design, the design history, auto-assignment settings, the standard file
+   slots, order notes and order files).
+   After phase 7, make sure `uploads/designs/.htaccess` ("Require all denied")
+   was uploaded too — design files are only served through `serve-file.php`.
+   Set the admin notification email in Admin → Settings.
    If anything is missing, the admin dashboard lists exactly what to run.
 3. Fill in `config.php` with real database credentials.
 4. Upload everything except the `.sql` files into the `test` folder.

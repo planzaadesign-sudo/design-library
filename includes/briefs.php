@@ -3,6 +3,7 @@
 // Only defines functions; outputs nothing if opened directly.
 
 require_once __DIR__ . '/similarity.php';
+require_once __DIR__ . '/design_utils.php'; // design codes, files, drafts, publishing
 
 const BRIEF_FLOORS = ['G', 'G+1', 'G+2', 'G+3'];
 const BRIEF_FACINGS = ['East', 'West', 'North', 'South'];
@@ -115,41 +116,16 @@ function save_brief(array $d, $staffId, $confirmedSimilar) {
 }
 
 /**
- * "Standardise & publish": turns an approved submission into a design, copying every
- * parameter from its brief so future similarity checks can compare against it.
- * Returns the new design id, or null if the submission cannot be published.
+ * "Standardise & publish": publishes the approved submission's draft design (created on
+ * approval, see includes/design_utils.php). Every required design file must be uploaded first.
+ * Assigns the design code, moves the files into uploads/designs/{code}/, and keeps the full
+ * audit trail (brief poster, designer, reviewer, approver, publisher).
+ * Returns [designId, null] or [null, error message].
  */
 function publish_submission($subId, $staffId) {
-    $ready = phase5_ready();
-    $sub = sim_q("SELECT s.*, b.* , s.id AS sub_id, b.id AS brief_id_real FROM submissions s JOIN briefs b ON s.brief_id = b.id WHERE s.id = ?", [(int)$subId])->fetch();
-    if (!$sub || $sub['review_status'] !== 'approved' || $sub['published']) return null;
-
-    $price = max(15000, (int)$sub['payout'] * 6);
-    // Old briefs have no floors/bhk columns yet: fall back to reading house_type ("G+1, 3BHK").
-    $floors = $ready && !empty($sub['floors']) ? $sub['floors'] : (preg_match('/\bG(\+\d)?\b/', (string)$sub['house_type'], $m) ? $m[0] : 'G+1');
-    $bhk = $ready && !empty($sub['bhk']) ? (int)$sub['bhk'] : (preg_match('/(\d+)\s*BHK/i', (string)$sub['house_type'], $m) ? (int)$m[1] : 3);
-    $row = [
-        'name' => $sub['title'], 'plot_width' => $sub['plot_width'] ?: 30, 'plot_length' => $sub['plot_length'] ?: 40,
-        'facing' => $sub['facing'] ?: 'East', 'floors' => $floors, 'bhk' => $bhk, 'base_price' => $price, 'delivery_days' => 12,
-        'variant' => random_int(0, 2), 'source_submission_id' => (int)$sub['sub_id'], 'standardized_by' => (int)$staffId,
-    ];
-    if ($ready) foreach (SIM_NEW_COLUMNS as $c) $row[$c] = $sub[$c];
-
-    $pdo = getDB();
-    $pdo->beginTransaction();
-    try {
-        sim_q("INSERT INTO designs (" . implode(', ', array_keys($row)) . ") VALUES (" . implode(', ', array_fill(0, count($row), '?')) . ")", array_values($row));
-        $designId = (int)$pdo->lastInsertId();
-        sim_q("UPDATE submissions SET published = 1 WHERE id = ?", [(int)$sub['sub_id']]);
-        sim_q("UPDATE briefs SET status = 'published' WHERE id = ?", [(int)$sub['brief_id_real']]);
-        // Illustrative royalty split -- the placeholder rate used since the first demo.
-        sim_q("UPDATE freelancers SET earnings = earnings + ? WHERE id = ?", [(int)round($price * 0.1), (int)$sub['freelancer_id']]);
-        $pdo->commit();
-    } catch (Throwable $e) {
-        $pdo->rollBack();
-        throw $e;
-    }
-    return $designId;
+    $draftId = create_draft_from_submission($subId, $staffId);
+    if (!$draftId) return [null, 'Only approved submissions that are not yet published can be published.'];
+    return publish_design_draft($draftId, $staffId);
 }
 
 // A brief's parameters as stored (for review screens and the freelancer view).

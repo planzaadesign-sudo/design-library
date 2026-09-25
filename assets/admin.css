@@ -66,7 +66,7 @@ a.stat:hover{transform:translateY(-2px); box-shadow:0 6px 18px rgba(0,0,0,.07);}
 .adm .stat-label{margin:0; font-size:13px; font-weight:600; text-transform:none; letter-spacing:0; color:var(--text);}
 .stat-hint{font-size:12px; color:var(--text-muted);}
 .dash-cols{display:grid; grid-template-columns:minmax(0,1.5fr) minmax(0,1fr); gap:18px; align-items:start;}
-@media (max-width:1100px){.dash-cols{grid-template-columns:1fr;}}
+@media (max-width:1100px){.dash-cols{grid-template-columns:minmax(0,1fr);}}
 .pend-head{margin:14px 0 8px; font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:.06em; color:var(--text-muted);}
 .pend-head:first-of-type{margin-top:0;}
 .pend-list{list-style:none; margin:0; padding:0; display:grid; gap:6px;}
@@ -221,3 +221,60 @@ tr.open td{background:var(--accent-soft) !important;}
 .param-head{margin:20px 0 4px; font-size:15px;}
 .adm .bf-section{background:var(--bg);}
 .adm .opt-pills input, .adm .opt-cards input, .adm .yn input{width:1px !important; padding:0; border:0;}
+
+/* ---- Design files (slot grid) ---- */
+.files-box{margin-top:4px;}
+.files-progress{display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:14px; font-size:14px;}
+.fp-bar{flex:1 1 180px; height:8px; border-radius:99px; background:var(--surface-2); overflow:hidden; border:1px solid var(--border);}
+.fp-bar i{display:block; height:100%; background:var(--accent); transition:width .3s ease;}
+.files-h{margin:18px 0 2px; font-size:15px;}
+.files-sub{margin:0 0 10px; font-size:13px; color:var(--text-muted);}
+.files-sub.internal{color:var(--attention);}
+.slot-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(230px, 1fr)); gap:12px;}
+.slot-card{display:flex; flex-direction:column; gap:8px; min-width:0; padding:12px; border:1px solid var(--border); border-radius:10px; background:var(--surface);}
+.slot-card.has{border-color:var(--border-strong);}
+.slot-card.missing{border:1px dashed var(--attention); background:var(--attention-soft);}
+.slot-top{display:flex; justify-content:space-between; align-items:flex-start; gap:8px; font-size:14px;}
+.slot-thumb{width:100%; height:100px; object-fit:contain; border-radius:6px; background:var(--surface-2); border:1px solid var(--border);}
+.slot-meta{display:flex; flex-direction:column; gap:2px; font-size:12px; color:var(--text-muted); min-width:0;}
+.slot-meta .fn{color:var(--text); font-weight:500; font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.slot-actions{display:flex; gap:6px; flex-wrap:wrap;}
+.slot-actions form{margin:0;}
+.slot-empty{margin:0; font-size:13px; color:var(--text-muted);}
+.slot-upload{display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin-top:auto;}
+.slot-upload input[type=file]{flex:1 1 100%; min-width:0; max-width:100%; font-size:12px; padding:4px 0; border:0; background:transparent;}
+.slot-upload small{flex:1 1 100%; font-size:11px; color:var(--text-muted);}
+
+/* ---- Design history timeline ---- */
+.history{list-style:none; margin:0; padding:0 0 0 4px;}
+.history li{position:relative; display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; padding:0 0 16px 24px; font-size:14px;}
+.history li::before{content:""; position:absolute; left:0; top:4px; width:12px; height:12px; border-radius:50%; background:var(--accent); border:2px solid var(--accent);}
+.history li::after{content:""; position:absolute; left:6px; top:18px; bottom:0; width:2px; margin-left:-1px; background:var(--border-strong);}
+.history li:last-child{padding-bottom:0;}
+.history li:last-child::after{display:none;}
+.history li.todo{color:var(--text-muted);}
+.history li.todo::before{background:var(--surface); border-color:var(--border-strong);}
+.h-when{font-size:13px; color:var(--text-muted);}
+
+/* ---- Order notes and files ---- */
+.notes-list{display:flex; flex-direction:column; gap:10px; max-height:360px; overflow-y:auto; margin-bottom:12px;}
+.note-item{padding:10px 12px; border:1px solid var(--border); border-left:3px solid var(--accent); border-radius:8px; background:var(--surface);}
+.note-meta{font-size:12px; color:var(--text-muted); margin-bottom:4px;}
+.note-body{font-size:14px; overflow-wrap:anywhere;}
+.note-form label{display:block; margin-bottom:6px; font-size:13px; font-weight:500;}
+.note-form textarea{width:100%;}
+.order-files{list-style:none; margin:0 0 12px; padding:0;}
+.order-files li{display:flex; justify-content:space-between; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--border);}
+.order-files li > div{display:flex; flex-direction:column; min-width:0; font-size:14px; overflow-wrap:anywhere;}
+.order-files li span{font-size:12px;}
+.order-upload input[type=file]{flex:1 1 auto;}
+
+/* ---- Assignment, drafts, codes ---- */
+.assign-reason{margin:10px 0 0; padding:10px 12px; border-radius:8px; background:var(--accent-soft); font-size:13px;}
+.overload-warn{margin:10px 0; padding:10px 12px; border-radius:8px; border:1px solid var(--amber, #B7791F); background:var(--amber-soft, #F6E7CF); color:var(--text); font-size:13px;}
+.draft-card{border-left:4px solid var(--amber, #B7791F);}
+.code-cell{font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size:13px; letter-spacing:.02em;}
+@media (max-width: 600px){
+  .slot-grid{grid-template-columns:1fr;}
+  .history li{flex-direction:column; gap:2px;}
+}

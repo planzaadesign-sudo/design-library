@@ -7,6 +7,7 @@ requireStaff('admin');
 define('PLANZAA_ADMIN', true);
 require __DIR__ . '/_lib.php';
 require_once __DIR__ . '/../includes/brief_ui.php'; // similarity engine, brief form, publishing
+require_once __DIR__ . '/../includes/design_ui.php'; // design codes, files, history, order notes
 
 $pdo = getDB();
 $myId = (int)$_SESSION['staff_id'];
@@ -22,6 +23,12 @@ $problems = schema_problems();
 
 if (!$problems) {
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        // A file bigger than the server allows arrives with an empty form (no token either).
+        if (empty($_POST) && (int)($_SERVER['CONTENT_LENGTH'] ?? 0) > 0) {
+            flash('That file is too big for the server to accept. Please make it smaller and try again.', 'err');
+            header('Location: ' . ($_SERVER['HTTP_REFERER'] ?? 'index.php'));
+            exit;
+        }
         csrf_check();
         require __DIR__ . '/_actions.php'; // every action ends in a redirect
         exit;
@@ -54,8 +61,8 @@ if (!$problems) {
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../assets/style.css?v=20260925g">
-<link rel="stylesheet" href="../assets/admin.css?v=2">
+<link rel="stylesheet" href="../assets/style.css?v=20260926a">
+<link rel="stylesheet" href="../assets/admin.css?v=3">
 <link rel="stylesheet" href="../assets/brief-form.css?v=2">
 </head>
 <body class="adm-body">

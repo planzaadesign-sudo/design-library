@@ -1,6 +1,17 @@
 <?php
 header('Content-Type: application/json');
 require_once __DIR__ . '/../db.php';
+require_once __DIR__ . '/../includes/design_utils.php'; // auto-assignment and new-order email
+
+/**
+ * After an order is saved: give it to the right team member and email the admin.
+ * Never allowed to fail the customer's order -- problems are only logged.
+ */
+function after_order_saved($orderId) {
+    if (!phase7_ready()) return;
+    try { auto_assign_order($orderId); } catch (Throwable $e) { error_log('Auto-assignment failed for order ' . $orderId . ': ' . $e->getMessage()); }
+    try { send_new_order_email($orderId); } catch (Throwable $e) { error_log('New-order email failed for order ' . $orderId . ': ' . $e->getMessage()); }
+}
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
@@ -99,6 +110,7 @@ if ($contactPref === 'call') {
         (int)$design['base_price'], (int)$design['delivery_days'],
         $state, $district, $callbackNotes === '' ? null : $callbackNotes,
     ]);
+    after_order_saved((int)$pdo->lastInsertId());
     echo json_encode([
         'order_code' => $orderCode,
         'callback' => true,
@@ -270,6 +282,7 @@ try {
     $pdo->rollBack();
     throw $e;
 }
+after_order_saved($orderId);
 
 echo json_encode([
     'order_code' => $orderCode,

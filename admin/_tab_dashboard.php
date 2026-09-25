@@ -23,6 +23,8 @@ $recent = q("SELECT o.id, o.order_code, o.customer_name, o.customer_phone, o.tot
 $callbacks = q("SELECT o.id, o.order_code, o.customer_name, o.customer_phone, o.customer_district, o.customer_state, o.created_at, d.name AS design_name
                 FROM library_orders o JOIN designs d ON d.id = o.design_id
                 WHERE o.contact_preference = 'call' AND o.status = 'new' ORDER BY o.id LIMIT 10")->fetchAll();
+$overloaded = q("SELECT o.id, o.order_code, o.customer_name, o.assignment_reason, s.name AS staff_name FROM library_orders o
+                  LEFT JOIN staff s ON s.id = o.assigned_to WHERE o.overload_warning = 1 AND o.status <> 'delivered' ORDER BY o.id DESC LIMIT 10")->fetchAll();
 $reviews = q("SELECT o.id, o.order_code, o.customer_name, o.total_price, d.name AS design_name
               FROM library_orders o JOIN designs d ON d.id = o.design_id
               WHERE o.needs_manual_review = 1 AND o.status <> 'delivered' AND COALESCE(o.contact_preference, 'self') <> 'call' ORDER BY o.id LIMIT 10")->fetchAll();
@@ -34,7 +36,7 @@ $overdue = q("SELECT b.id, b.title, b.deadline, b.status, f.name AS freelancer_n
               WHERE b.deadline < CURDATE() AND b.status IN ('open', 'claimed')
                 AND NOT EXISTS (SELECT 1 FROM submissions s WHERE s.brief_id = b.id)
               ORDER BY b.deadline LIMIT 10")->fetchAll();
-$nothingPending = !$callbacks && !$reviews && !$pendingSubs && !$overdue;
+$nothingPending = !$callbacks && !$reviews && !$pendingSubs && !$overdue && !$overloaded;
 ?>
 <div class="stat-grid">
   <?php foreach ($stats as [$label, $value, $hint, $tone, $link]): ?>
@@ -88,6 +90,18 @@ $nothingPending = !$callbacks && !$reviews && !$pendingSubs && !$overdue;
             <span><?= h(trim($c['customer_district'] . ', ' . $c['customer_state'], ', ')) ?> &#183; <?= h($c['design_name']) ?> &#183; <?= fdate($c['created_at'], true) ?></span>
           </a>
         </li>
+      <?php endforeach; ?>
+      </ul>
+    <?php endif; ?>
+
+    <?php if ($overloaded): ?>
+      <h3 class="pend-head">Overloaded assignments</h3>
+      <p class="overload-warn">All team members have a lot of active orders right now. You might want to redistribute some work.</p>
+      <ul class="pend-list">
+      <?php foreach ($overloaded as $ov): ?>
+        <li class="pend late"><a class="pend-main" href="<?= h(url(['tab' => 'orders', 'id' => $ov['id']])) ?>">
+          <strong><?= h($ov['order_code']) ?> &#183; <?= h($ov['customer_name']) ?></strong>
+          <span>With <?= h($ov['staff_name'] ?? 'nobody') ?> &#183; open it to reassign</span></a></li>
       <?php endforeach; ?>
       </ul>
     <?php endif; ?>

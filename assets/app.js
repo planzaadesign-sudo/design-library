@@ -199,9 +199,10 @@ function matchBadge(match, pop){
 // Design card shared by the library grid and "You might also like".
 function designCard(d, query, i, pop){
   return '<a class="dcard" style="--i:' + i + '" href="design.php?id=' + d.id + (query ? '&' + query : '') + '">'
-    + '<div class="dcard-art">' + d.floor_plan_svg + '</div>'
+    + '<div class="dcard-art' + (d.preview_plan_url ? ' photo' : '') + '">' + (d.preview_plan_url ? '<img src="' + esc(d.preview_plan_url) + '" alt="Floor plan of ' + esc(d.name) + '" loading="lazy">' : d.floor_plan_svg) + '</div>'
     + '<div class="dcard-body">'
     +   '<div class="dcard-name">' + esc(d.name) + '</div>'
+    +   (d.design_code ? '<div class="dcard-code">' + esc(d.design_code) + '</div>' : '')
     +   '<div class="tags"><span class="tag">' + d.plot_width + '×' + d.plot_length + ' ft plot</span><span class="tag">' + esc(d.facing) + ' facing</span><span class="tag">' + esc(floorsLabel(d.floors)) + '</span><span class="tag">' + d.bhk + ' BHK</span></div>'
     +   matchBadge(d.match, pop)
     +   '<div class="dcard-foot"><div><span class="dprice">' + fmt(d.base_price) + '</span><span class="ddays">Ready in ' + d.delivery_days + ' days</span></div>'

@@ -8,7 +8,7 @@ $orderId = (int)($_GET['id'] ?? 0);
 // =====================================================================================
 if ($orderId):
     $o = q("SELECT o.*, d.name AS design_name, d.plot_width AS d_width, d.plot_length AS d_length, d.facing AS d_facing,
-                   d.floors AS d_floors, d.bhk AS d_bhk, d.base_price AS d_price, d.is_active AS d_active, s.name AS staff_name
+                   d.floors AS d_floors, d.bhk AS d_bhk, d.base_price AS d_price, d.is_active AS d_active, d.design_code AS d_code, s.name AS staff_name
             FROM library_orders o
             JOIN designs d ON d.id = o.design_id
             LEFT JOIN staff s ON s.id = o.assigned_to
@@ -105,6 +105,7 @@ if ($orderId):
       <h3>Design</h3>
       <dl class="kv">
         <dt>Design</dt><dd><?= h($o['design_name']) ?><?= $o['d_active'] ? '' : ' <span class="badge badge-neutral">Hidden from customers</span>' ?></dd>
+        <dt>Design code</dt><dd><a href="<?= h(url(['tab' => 'designs', 'edit' => $o['design_id']])) ?>#history"><?= h($o['d_code'] ?: '—') ?></a></dd>
         <dt>Plot</dt><dd><?= (int)$o['d_width'] ?> &times; <?= (int)$o['d_length'] ?> ft, <?= h($o['d_facing']) ?> facing</dd>
         <dt>Floors</dt><dd><?= h($o['d_floors']) ?></dd>
         <dt>BHK</dt><dd><?= (int)$o['d_bhk'] ?></dd>
@@ -197,6 +198,7 @@ if ($orderId):
           <button class="btn" type="submit">Save</button>
         </div>
       </form>
+      <?= render_assignment_note($o) ?>
     </section>
 
     <section class="adm-card">
@@ -210,6 +212,18 @@ if ($orderId):
       </ol>
     </section>
   </div>
+</div>
+<div class="detail-grid">
+  <section class="adm-card" id="notes">
+    <h3>Internal notes</h3>
+    <p class="muted small-note">Never shown to the customer. For call-back orders, write down what was agreed on the call.</p>
+    <?= render_order_notes($o, csrf_field() . return_field()) ?>
+  </section>
+  <section class="adm-card" id="orderFiles">
+    <h3>Order files</h3>
+    <p class="muted small-note">The modified design files made for this customer.</p>
+    <?= render_order_files($o, csrf_field() . return_field(), '../') ?>
+  </section>
 </div>
 <?php
     return;

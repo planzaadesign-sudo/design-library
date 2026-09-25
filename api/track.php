@@ -1,6 +1,7 @@
 <?php
 header('Content-Type: application/json');
 require_once __DIR__ . '/../db.php';
+require_once __DIR__ . '/../includes/design_utils.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
@@ -55,6 +56,7 @@ if (is_array($ids) && $ids) {
 echo json_encode([
     'order_code' => $order['order_code'],
     'design_name' => $order['design_name'],
+    'design_code' => phase7_ready() ? (du_q("SELECT design_code FROM designs WHERE id = ?", [(int)$order['design_id']])->fetchColumn() ?: null) : null,
     'created_at' => $order['created_at'],
     'status' => $order['status'],
     'total_price' => (int)$order['total_price'],

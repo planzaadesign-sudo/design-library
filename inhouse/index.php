@@ -3,6 +3,7 @@ require_once __DIR__ . '/../db.php';
 require_once __DIR__ . '/../auth.php';
 requireStaff('inhouse'); // admins can open this page too (auth.php allows it)
 require_once __DIR__ . '/../includes/dashboard.php';
+require_once __DIR__ . '/../includes/design_ui.php';
 
 $pdo = getDB();
 $myId = (int)$_SESSION['staff_id'];
@@ -19,6 +20,11 @@ $problems = dash_setup_problems();
 // ACTIONS (every POST): CSRF check, validate, write, flash, redirect.
 // =====================================================================================
 if (!$problems && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    // A file bigger than the server allows arrives as an empty POST (no CSRF token either).
+    if (!$_POST && !empty($_SERVER['CONTENT_LENGTH'])) {
+        dash_flash('That file is too big for the server. Please upload a smaller file.', 'err');
+        dash_redirect(['tab' => $tab]);
+    }
     dash_csrf_check();
     $action = (string)($_POST['action'] ?? '');
 
@@ -37,16 +43,71 @@ if (!$problems && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $status = $outcome === 'reject' ? 'rejected' : 'approved';
         sim_q("UPDATE submissions SET review_status = ?, reviewer_id = ?, review_notes = ?, reviewed_at = NOW() WHERE id = ?", [$status, $myId, $notes, $subId]);
         sim_q("UPDATE briefs SET status = ? WHERE id = ?", [$status === 'approved' ? 'approved' : 'needs_revision', (int)$sub['brief_id']]);
-        dash_flash($status === 'approved' ? 'Approved. It is now in Standardize, ready to publish.' : 'Sent back to the designer with your notes.');
+        if ($status === 'approved') create_draft_from_submission($subId, $myId); // the designer's CAD + preview go into their slots
+        dash_flash($status === 'approved' ? 'Approved. It is now in Standardize — upload the remaining files there, then publish.' : 'Sent back to the designer with your notes.');
         dash_redirect(['tab' => 'review']);
     }
 
+    // ---- Standardize: draft design files, then publish ----
+    // In-house can only touch files of designs that are not published yet (drafts).
+    $draftOr404 = function ($designId) {
+        $d = sim_q("SELECT * FROM designs WHERE id = ? AND published_at IS NULL AND source_submission_id IS NOT NULL", [(int)$designId])->fetch();
+        if (!$d) { dash_flash('This design is already published or does not exist.', 'err'); dash_redirect(['tab' => 'standardize']); }
+        return $d;
+    };
+    $backToDraft = function (array $d) { header('Location: ' . dash_url(['tab' => 'standardize', 'sub' => (int)$d['source_submission_id']]) . '#designFiles'); exit; };
+
+    if ($action === 'prepare_draft') {
+        // Submissions approved before the file system existed have no draft yet.
+        $draftId = create_draft_from_submission((int)($_POST['submission_id'] ?? 0), $myId);
+        if (!$draftId) { dash_flash('Only approved submissions that are not yet published can be standardized.', 'err'); dash_redirect(['tab' => 'standardize']); }
+        $backToDraft(['source_submission_id' => (int)$_POST['submission_id']]);
+    }
+
+    if ($action === 'slot_upload') {
+        $d = $draftOr404($_POST['design_id'] ?? 0);
+        $slot = (string)($_POST['slot'] ?? '');
+        $f = $_FILES['file'] ?? null;
+        if (!isset(FILE_SLOTS[$slot])) { dash_flash('Unknown file slot.', 'err'); $backToDraft($d); }
+        if (!$f || $f['error'] !== UPLOAD_ERR_OK || !is_uploaded_file($f['tmp_name'])) { dash_flash(upload_error_text($f['error'] ?? UPLOAD_ERR_NO_FILE), 'err'); $backToDraft($d); }
+        $err = store_slot_file($d, $slot, $f['tmp_name'], $f['name'], (int)$f['size'], true, $myId);
+        dash_flash(FILE_SLOTS[$slot]['label'] . ($err ? ': ' . $err : ' uploaded.'), $err ? 'err' : 'ok');
+        $backToDraft($d);
+    }
+
+    if ($action === 'slot_delete') {
+        $d = $draftOr404($_POST['design_id'] ?? 0);
+        $slot = (string)($_POST['slot'] ?? '');
+        dash_flash(isset(FILE_SLOTS[$slot]) && delete_slot_file($d['id'], $slot) ? FILE_SLOTS[$slot]['label'] . ' deleted.' : 'There was no file to delete.');
+        $backToDraft($d);
+    }
+
     if ($action === 'publish') {
-        // Shared routine (includes/briefs.php): copies every brief parameter onto the new design.
-        $designId = publish_submission((int)($_POST['submission_id'] ?? 0), $myId);
-        if (!$designId) { dash_flash('Only approved submissions that are not yet published can be published.', 'err'); dash_redirect(['tab' => 'standardize']); }
-        dash_flash('Published! The design is now live in the library.');
+        // Shared routine (includes/briefs.php): checks the required files, gives the design its code,
+        // copies the audit trail and makes it live.
+        $subId = (int)($_POST['submission_id'] ?? 0);
+        [$designId, $err] = publish_submission($subId, $myId);
+        if ($err) { dash_flash($err, 'err'); header('Location: ' . dash_url(['tab' => 'standardize', 'sub' => $subId]) . '#designFiles'); exit; }
+        $code = sim_q("SELECT design_code FROM designs WHERE id = ?", [$designId])->fetchColumn();
+        dash_flash('Published as ' . $code . '! The design is now live in the library.');
         dash_redirect(['tab' => 'standardize', 'published' => $designId]);
+    }
+
+    // ---- Order notes and files (only orders assigned to me) ----
+    if ($action === 'order_note' || $action === 'order_file') {
+        $order = sim_q("SELECT id, order_code FROM library_orders WHERE id = ? AND assigned_to = ?", [(int)($_POST['order_id'] ?? 0), $myId])->fetch();
+        if (!$order) { dash_flash('This order is not assigned to you.', 'err'); dash_redirect(['tab' => 'orders']); }
+        $back = function ($hash) use ($order) { header('Location: ' . dash_url(['tab' => 'orders', 'id' => (int)$order['id']]) . $hash); exit; };
+        if ($action === 'order_note') {
+            $note = trim((string)($_POST['note'] ?? ''));
+            if ($note === '' || mb_strlen($note) > 5000) { dash_flash($note === '' ? 'Please write the note first.' : 'Please keep the note shorter.', 'err'); $back('#notes'); }
+            add_order_note($order['id'], $myId, $_SESSION['staff_name'] ?? 'Staff', $note);
+            dash_flash('Note saved.');
+            $back('#notes');
+        }
+        $err = store_order_file($order, $_FILES['file'] ?? [], $myId);
+        dash_flash($err ?: 'File attached to the order.', $err ? 'err' : 'ok');
+        $back('#orderFiles');
     }
 
     if ($action === 'post_brief') {
@@ -156,7 +217,7 @@ if ($tab === 'dashboard'):
 // =====================================================================================
 elseif ($tab === 'orders' && !empty($_GET['id'])):
     $o = sim_q("SELECT o.*, d.name AS design_name, d.plot_width AS d_width, d.plot_length AS d_length, d.facing AS d_facing,
-                       d.floors AS d_floors, d.bhk AS d_bhk, d.base_price AS d_price
+                       d.floors AS d_floors, d.bhk AS d_bhk, d.base_price AS d_price, d.design_code AS d_code
                 FROM library_orders o JOIN designs d ON d.id = o.design_id
                 WHERE o.id = ? AND o.assigned_to = ?", [(int)$_GET['id'], $myId])->fetch();
     if (!$o):
@@ -197,6 +258,7 @@ elseif ($tab === 'orders' && !empty($_GET['id'])):
     </dl></section>
     <section class="adm-card"><h3>Design</h3><dl class="kv">
       <dt>Design</dt><dd><?= dh($o['design_name']) ?></dd>
+      <dt>Design code</dt><dd class="code-cell"><?= dh($o['d_code'] ?: '—') ?></dd>
       <dt>Plot</dt><dd><?= (int)$o['d_width'] ?> &times; <?= (int)$o['d_length'] ?> ft, <?= dh($o['d_facing']) ?> facing</dd>
       <dt>Floors / BHK</dt><dd><?= dh($o['d_floors']) ?> &#183; <?= (int)$o['d_bhk'] ?> BHK</dd>
       <?php if ($plotDiffers): ?><dt>Customer's plot</dt><dd class="hl"><?= $o['plot_width'] ? (int)$o['plot_width'] : '?' ?> &times; <?= $o['plot_length'] ? (int)$o['plot_length'] : '?' ?> ft<?= $o['facing'] ? ', ' . dh($o['facing']) . ' facing' : '' ?></dd><?php endif; ?>
@@ -215,8 +277,21 @@ elseif ($tab === 'orders' && !empty($_GET['id'])):
       <p class="muted small-note">Total: <strong><?= dash_inr($o['total_price']) ?></strong><?= !empty($o['needs_manual_review']) ? ' (estimate &#8212; the admin confirms the final price)' : '' ?></p>
     </section>
     <section class="adm-card"><h3>Stage</h3><?= dash_stepper($o['status']) ?>
-      <p class="muted small-note">The admin moves orders between stages.</p></section>
+      <p class="muted small-note">The admin moves orders between stages.</p>
+      <?= render_assignment_note($o) ?></section>
   </div>
+</div>
+<div class="detail-grid">
+  <section class="adm-card" id="notes">
+    <h3>Internal notes</h3>
+    <p class="muted small-note">Never shown to the customer. For call-back orders, write down what was agreed on the call.</p>
+    <?= render_order_notes($o, dash_csrf_field()) ?>
+  </section>
+  <section class="adm-card" id="orderFiles">
+    <h3>Order files</h3>
+    <p class="muted small-note">The modified design files made for this customer.</p>
+    <?= render_order_files($o, dash_csrf_field(), '../') ?>
+  </section>
 </div>
 <?php
     endif;
@@ -293,7 +368,7 @@ elseif ($tab === 'standardize'):
     $published = !empty($_GET['published']) ? sim_q("SELECT * FROM designs WHERE id = ?", [(int)$_GET['published']])->fetch() : null;
     if ($published): ?>
   <section class="adm-card published-card">
-    <div class="review-top"><div><div class="eyebrow">Just published</div><h2 class="card-title"><?= dh($published['name']) ?></h2></div>
+    <div class="review-top"><div><div class="eyebrow">Just published &#183; <span class="code-cell"><?= dh($published['design_code']) ?></span></div><h2 class="card-title"><?= dh($published['name']) ?></h2></div>
       <a class="btn btn-small" href="../design.php?id=<?= (int)$published['id'] ?>" target="_blank" rel="noopener">View on the website &rarr;</a></div>
     <p class="muted">Price <?= dash_inr($published['base_price']) ?> &#183; ready in <?= (int)$published['delivery_days'] ?> days. Ask the admin to add its rooms so customers can change it room by room.</p>
     <?= dash_brief_facts($published) ?>
@@ -310,10 +385,26 @@ elseif ($tab === 'standardize'):
       <span class="muted">by <?= dh($s['freelancer_name']) ?> &#183; approved <?= dash_date($s['reviewed_at']) ?><?= $s['reviewer_name'] ? ' by ' . dh($s['reviewer_name']) : '' ?></span></div>
       <span class="badge b-green">Approved</span></div>
     <?php if ($s['review_notes']): ?><p class="note-text"><?= nl2br(dh($s['review_notes'])) ?></p><?php endif; ?>
+    <?php $draft = draft_for_submission($s['id']); $open = $draft && (int)($_GET['sub'] ?? 0) === (int)$s['id'];
+    if (!$draft): ?>
+    <p class="muted">Before publishing, every design needs its standard set of files.</p>
+    <form method="post" data-saving><?= dash_csrf_field() ?>
+      <input type="hidden" name="action" value="prepare_draft"><input type="hidden" name="submission_id" value="<?= (int)$s['id'] ?>">
+      <div class="adm-actions left"><button class="btn btn-primary" type="submit">Start standardizing</button></div>
+    </form>
+    <?php else: $missing = missing_required_slots($draft['id']); ?>
+    <?php if ($missing): ?><p class="overload-warn">This design can't be published yet — these files are still missing: <?= dh(implode(', ', $missing)) ?>.</p>
+    <?php else: ?><p class="assign-reason">All required files are uploaded. It's ready to publish.</p><?php endif; ?>
+    <?php if ($open): ?>
+      <?= render_design_files($draft, dash_csrf_field(), '../') ?>
+    <?php endif; ?>
     <form method="post" data-saving><?= dash_csrf_field() ?>
       <input type="hidden" name="action" value="publish"><input type="hidden" name="submission_id" value="<?= (int)$s['id'] ?>">
-      <div class="adm-actions left"><button class="btn btn-primary" type="submit">Standardize &amp; publish</button></div>
+      <div class="adm-actions left">
+        <?php if (!$open): ?><a class="btn" href="<?= dh(dash_url(['tab' => 'standardize', 'sub' => (int)$s['id']])) ?>#designFiles">Upload files</a><?php endif; ?>
+        <button class="btn btn-primary" type="submit"<?= $missing ? ' disabled title="Upload the missing files first"' : '' ?>>Standardize &amp; publish</button></div>
     </form>
+    <?php endif; ?>
   </section>
 <?php endforeach; endif;
 

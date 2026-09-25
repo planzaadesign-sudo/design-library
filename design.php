@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/style.css?v=20260925g">
+<link rel="stylesheet" href="assets/style.css?v=20260926a">
 </head>
 <body class="site">
 <?php include __DIR__ . '/partials/nav.php'; ?>
@@ -56,13 +56,16 @@ function render(){
     '<nav class="breadcrumb" aria-label="Breadcrumb"><a href="index.php' + (q ? '?' + q : '') + '">← Back to all designs</a><span aria-hidden="true">/</span><span class="current">' + esc(design.name) + '</span></nav>'
     + '<div class="pdp">'
     + '<div class="pdp-media">'
-    +   '<div class="art-card"><div class="art-label">Front view of the house</div>' + design.elevation_svg + '</div>'
-    +   '<div class="art-card"><div class="art-label">Floor plan (room layout from above)</div>' + design.floor_plan_svg + '</div>'
+    +   '<div class="art-card' + (design.preview_elevation_url ? ' photo' : '') + '"><div class="art-label">Front view of the house</div>'
+    +     (design.preview_elevation_url ? '<img src="' + esc(design.preview_elevation_url) + '" alt="Front view of ' + esc(design.name) + '">' : design.elevation_svg) + '</div>'
+    +   '<div class="art-card' + (design.preview_plan_url ? ' photo' : '') + '"><div class="art-label">Floor plan (room layout from above)</div>'
+    +     (design.preview_plan_url ? '<img src="' + esc(design.preview_plan_url) + '" alt="Floor plan of ' + esc(design.name) + '">' : design.floor_plan_svg) + '</div>'
     + '</div>'
     + '<div class="pdp-info">'
     +   '<div class="pdp-title"><div class="eyebrow">Ready-made design</div><h1>' + esc(design.name) + '</h1></div>'
     +   banner()
     +   '<section class="info-card"><h2>About this design</h2><dl class="spec-grid">'
+    +     (design.design_code ? '<div><dt>Design code</dt><dd>' + esc(design.design_code) + '</dd></div>' : '')
     +     '<div><dt>Plot size</dt><dd>' + design.plot_width + ' × ' + design.plot_length + ' ft</dd></div>'
     +     '<div><dt>Plot direction</dt><dd>' + esc(design.facing) + ' facing</dd></div>'
     +     '<div><dt>Floors</dt><dd>' + esc(floorsLabel(design.floors)) + '</dd></div>'

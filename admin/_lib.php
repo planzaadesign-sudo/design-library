@@ -199,7 +199,10 @@ function schema_problems() {
             if (!in_array($c, $have, true)) $problems[] = "Column <code>$t.$c</code> is missing &#8212; run $where.";
         }
     }
-    if (!$problems && !phase5_ready()) {
+    if (!phase7_ready()) {
+        $problems[] = 'Design codes, design files and auto-assignment need the database update &#8212; run schema-phase7.sql.';
+    }
+    if (!phase5_ready()) {
         $problems[] = 'The design similarity columns (plot shape, main door, stairs, style&#8230;) are missing &#8212; run schema-phase5.sql.';
     }
     return array_values(array_unique($problems));
@@ -248,6 +251,13 @@ function review_block(array $s) {
             . '<button class="btn btn-warn" name="outcome" value="reject" data-needs-notes>Send back for changes</button>'
             . '</div></form>';
     } elseif ($s['review_status'] === 'approved' && !$s['published']) {
+        // Approved: its draft design needs the required files before it can be published.
+        $draft = draft_for_submission($s['id']);
+        if ($draft) {
+            $missing = missing_required_slots($draft['id']);
+            $html .= '<p class="note-text">' . ($missing ? 'Still missing before publishing: ' . h(implode(', ', $missing)) . '.' : 'All required files are uploaded.')
+                . ' <a href="' . h(url(['tab' => 'designs', 'edit' => $draft['id']])) . '#designFiles">Upload or check the design files &rarr;</a></p>';
+        }
         $html .= '<form method="post" data-saving>' . csrf_field() . return_field()
             . '<input type="hidden" name="action" value="sub_publish"><input type="hidden" name="submission_id" value="' . (int)$s['id'] . '">'
             . '<button class="btn btn-primary">Standardise &amp; publish as a design</button></form>';

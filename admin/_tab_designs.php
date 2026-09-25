@@ -60,15 +60,35 @@ $v = function ($key, $default = '') use ($editing) {
     </div>
   </form>
 </section>
+<?php if ($editing): $isDraft = $editing['published_at'] === null; ?>
+<?php if ($isDraft): $missing = missing_required_slots($editing['id']); ?>
+<section class="adm-card draft-card">
+  <h2>Draft &#8212; not on the website yet</h2>
+  <p>Upload the required files below, then publish. Publishing gives this design its code and makes it live.</p>
+  <?php if ($missing): ?><p class="overload-warn">This design can't be published yet &#8212; these files are still missing: <?= h(implode(', ', $missing)) ?>.</p><?php endif; ?>
+  <form method="post" data-saving><?= csrf_field() ?><?= return_field() ?>
+    <input type="hidden" name="action" value="publish_draft"><input type="hidden" name="design_id" value="<?= (int)$editing['id'] ?>">
+    <button class="btn btn-primary" type="submit">Standardize &amp; publish</button></form>
+</section>
+<?php endif; ?>
+<section class="adm-card" id="history">
+  <h2>Design history</h2>
+  <?= render_design_history($editing) ?>
+</section>
+<section class="adm-card">
+  <h2>Design files</h2>
+  <?= render_design_files($editing, csrf_field() . return_field(), '../') ?>
+</section>
+<?php endif; ?>
 <?php endif; ?>
 
 <div class="table-wrap"><table class="adm-table">
-  <thead><tr><th>ID</th><th>Name</th><th>Plot</th><th>Facing</th><th>Floors</th><th>BHK</th><th class="num">Price</th><th>Days</th><th>Source</th><th>Rooms</th><th>Visible</th><th></th></tr></thead>
+  <thead><tr><th>Code</th><th>Name</th><th>Plot</th><th>Facing</th><th>Floors</th><th>BHK</th><th class="num">Price</th><th>Days</th><th>Source</th><th>Rooms</th><th>Visible</th><th></th></tr></thead>
   <tbody>
   <?php foreach ($designs as $d): $open = $roomsFor === (int)$d['id']; ?>
     <tr class="<?= $d['is_active'] ? '' : 'dim' ?><?= $open ? ' open' : '' ?>">
-      <td><?= (int)$d['id'] ?></td>
-      <td><strong><?= h($d['name']) ?></strong><?= $d['order_count'] ? '<small class="muted block">' . (int)$d['order_count'] . ' orders</small>' : '' ?></td>
+      <td class="nowrap code-cell"><?= $d['design_code'] ? h($d['design_code']) : '<span class="muted">#' . (int)$d['id'] . '</span>' ?></td>
+      <td><strong><?= h($d['name']) ?></strong><?= $d['published_at'] === null ? ' <span class="badge b-amber">Draft</span>' : '' ?><?= $d['order_count'] ? '<small class="muted block">' . (int)$d['order_count'] . ' orders</small>' : '' ?></td>
       <td class="nowrap"><?= (int)$d['plot_width'] ?> &times; <?= (int)$d['plot_length'] ?></td>
       <td><?= h($d['facing']) ?></td>
       <td><?= h($d['floors']) ?></td>
@@ -78,11 +98,13 @@ $v = function ($key, $default = '') use ($editing) {
       <td><?= $d['source_submission_id'] ? 'Freelancer: ' . h($d['freelancer_name'] ?? '?') : 'In-house' ?></td>
       <td><a href="<?= h($open ? url(['tab' => 'designs']) : url(['tab' => 'designs', 'rooms' => $d['id']]) . '#rooms') ?>"><?= (int)$d['room_count'] ?> room<?= (int)$d['room_count'] === 1 ? '' : 's' ?> <?= $open ? '&#9650;' : '&#9660;' ?></a></td>
       <td>
+        <?php if ($d['published_at'] === null): ?><span class="muted small">Not yet</span><?php else: ?>
         <form method="post" class="toggle-form" data-saving>
           <?= csrf_field() ?><?= return_field() ?>
           <input type="hidden" name="action" value="design_toggle"><input type="hidden" name="id" value="<?= (int)$d['id'] ?>">
           <button type="submit" class="switch-btn<?= $d['is_active'] ? ' on' : '' ?>" role="switch" aria-checked="<?= $d['is_active'] ? 'true' : 'false' ?>" aria-label="Show <?= h($d['name']) ?> to customers"><span></span></button>
         </form>
+        <?php endif; ?>
       </td>
       <td><a class="btn btn-small" href="<?= h(url(['tab' => 'designs', 'edit' => $d['id']])) ?>#designForm">Edit</a></td>
     </tr>

@@ -1,0 +1,4 @@
+# Block direct access to all files -- they must be served through serve-file.php,
+# which checks whether the requester has permission (staff, a customer with a delivered
+# order, or a public preview thumbnail).
+Require all denied

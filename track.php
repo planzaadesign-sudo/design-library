@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/style.css?v=20260925g">
+<link rel="stylesheet" href="assets/style.css?v=20260926a">
 </head>
 <body class="site">
 <?php include __DIR__ . '/partials/nav.php'; ?>
@@ -97,6 +97,7 @@ function renderOrder(o){
     + (o.needs_manual_review ? '<div class="note note-danger">' + icon('info') + '<span>' + reviewNote + '</span></div>' : '')
     + '<dl class="details">'
     +   '<div class="drow"><dt>Design</dt><dd>' + esc(o.design_name) + '</dd></div>'
+    +   (o.design_code ? '<div class="drow"><dt>Design code</dt><dd>' + esc(o.design_code) + '</dd></div>' : '')
     +   '<div class="drow"><dt>Ordered on</dt><dd>' + dateLabel + '</dd></div>'
     +   '<div class="drow"><dt>' + (o.callback ? 'Design price' : o.needs_manual_review ? 'Price starts from' : 'Total price') + '</dt><dd>' + fmt(o.total_price) + '</dd></div>'
     +   (o.callback ? '' : '<div class="drow"><dt>' + STRUCT_NAME + '</dt><dd>' + (o.structural ? 'Included' : 'Not included') + '</dd></div>')

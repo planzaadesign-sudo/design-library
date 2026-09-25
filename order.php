@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Place Order &#8212; Planzaa</title>
+<title>Place My Order &#8212; Planzaa</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -33,7 +33,7 @@ async function load(){
     isCustom ? fetch('api/modifications.php') : null,
   ]);
   if(!dRes || !dRes.ok || (mRes && !mRes.ok)){
-    document.getElementById('app').innerHTML = '<h1>Design not found</h1><p class="lead">This design may have been removed.</p><a class="btn" href="index.php">← Back to designs</a>';
+    document.getElementById('app').innerHTML = '<h1>We could not find this design</h1><p class="lead">It may have been removed. Please pick another design.</p><a class="btn" href="index.php">← Back to all designs</a>';
     return;
   }
   design = normDesign(await dRes.json());
@@ -53,25 +53,25 @@ function backLink(){
   if(isCustom){
     back.set('structural', structural ? '1' : '0');
     back.set('mods', mods.map(m => m.id).join(','));
-    return '<a class="back" href="customize.php?' + back + '">← Edit your changes</a>';
+    return '<a class="back" href="customize.php?' + back + '">← Change my choices</a>';
   }
   return '<a class="back" href="design.php?' + back + '">← Back to design</a>';
 }
 
 function summaryBody(){
-  let rows = '<div class="sum-line"><span>Base design</span><span>' + fmt(design.base_price) + '</span></div>';
+  let rows = '<div class="sum-line"><span>Design price</span><span>' + fmt(design.base_price) + '</span></div>';
   if(isCustom){
-    rows += '<div class="sum-line sub"><span>Structural design</span><span>' + (structural ? 'Included' : 'Not included') + '</span></div>'
+    rows += '<div class="sum-line sub"><span>' + STRUCT_NAME + '</span><span>' + (structural ? 'Included' : 'Not included') + '</span></div>'
       + '<div class="sum-mods">' + mods.map(m => '<div class="sum-line sub"><span>' + esc(m.label) + '</span><span>'
       + (m.tier === 4 ? fmt(m.price_min) + '–' + fmt(m.price_max) : fmt(effectiveModPrice(m, structural))) + '</span></div>').join('') + '</div>';
   } else {
-    rows += '<div class="sum-line sub"><span>Structural design package</span><span>' + (structAddon ? fmt(structAddonPrice(design.base_price)) : 'Not added') + '</span></div>';
+    rows += '<div class="sum-line sub"><span>' + STRUCT_NAME + '</span><span>' + (structAddon ? fmt(structAddonPrice(design.base_price)) : 'Not added') + '</span></div>';
   }
   return rows
-    + '<div class="sum-total"><span>' + (q.isRange ? 'Estimated' : 'Total') + '</span><span class="price' + (q.isRange ? ' range' : '') + '">' + totalLabel(q) + '</span></div>'
-    + '<div class="sum-days">Estimated delivery: ' + q.days + ' days</div>'
-    + (q.structuralWarning ? '<div class="note note-warn">' + icon('warning') + '<span>Some selected changes affect structural elements. We recommend including structural design.</span></div>' : '')
-    + (q.needsReview ? '<div class="note note-danger">' + icon('info') + '<span>This combination needs a manual review. Our team will confirm the exact price within 24 hours.</span></div>' : '');
+    + '<div class="sum-total"><span>' + (q.isRange ? 'Approx. price' : 'Total price') + '</span><span class="price' + (q.isRange ? ' range' : '') + '">' + totalLabel(q) + '</span></div>'
+    + '<div class="sum-days">Ready in about ' + q.days + ' days</div>'
+    + (q.structuralWarning ? '<div class="note note-warn">' + icon('warning') + '<span>Some of your changes affect the building structure. We suggest you add building safety drawings.</span></div>' : '')
+    + (q.needsReview ? '<div class="note note-danger">' + icon('info') + '<span>These changes are big — our team will check and tell you the exact price within 24 hours.</span></div>' : '');
 }
 
 // Floating-label field: the label sits inside the input and floats up on focus or once filled.
@@ -85,36 +85,36 @@ function render(){
   const expanded = window.matchMedia('(min-width: 768px)').matches;
   document.getElementById('app').innerHTML =
     backLink()
-    + '<h1>' + (q.needsReview ? 'Request your customised design' : 'Place your order') + '</h1>'
-    + '<p class="lead">We’ll confirm the details with you by phone before any work begins.</p>'
+    + '<h1>' + (q.needsReview ? 'Send your changes to our team' : 'Place your order') + '</h1>'
+    + '<p class="lead">' + (q.needsReview ? 'Our team will check your changes and call you with the exact price within 24 hours.' : 'We will call you to check everything before we start work.') + '</p>'
     + '<div class="sum-card">'
     +   '<button type="button" class="sum-toggle" id="sumToggle" aria-expanded="' + expanded + '" aria-controls="sumBody">'
-    +     '<span class="t-name"><small>Order summary</small><strong>' + esc(design.name) + '</strong></span>'
+    +     '<span class="t-name"><small>Your order</small><strong>' + esc(design.name) + '</strong></span>'
     +     '<span class="t-total">' + totalLabel(q) + '</span>' + icon('chevron', 'chev')
     +   '</button>'
     +   '<div class="sum-body" id="sumBody"' + (expanded ? '' : ' hidden') + '>' + summaryBody() + '</div>'
     + '</div>'
     + '<form class="form-card" id="orderForm" novalidate>'
     +   '<h2>Your details</h2>'
-    +   ff('customer_name', 'Full name', 'autocomplete="name" maxlength="100" required')
-    +   ff('customer_phone', 'Phone number', 'type="tel" inputmode="numeric" autocomplete="tel-national" maxlength="11" required')
-    +   ff('customer_city', 'City', 'autocomplete="address-level2" maxlength="100" required')
-    +   '<h2 class="sub-head">Plot details <span class="muted" style="font-weight:400; font-size:13px">(optional)</span></h2>'
+    +   ff('customer_name', 'Your full name', 'autocomplete="name" maxlength="100" required')
+    +   ff('customer_phone', 'Mobile number', 'type="tel" inputmode="numeric" autocomplete="tel-national" maxlength="11" required')
+    +   ff('customer_city', 'Your city or town', 'autocomplete="address-level2" maxlength="100" required')
+    +   '<h2 class="sub-head">Your plot <span class="muted" style="font-weight:400; font-size:13px">(you can skip this)</span></h2>'
     +   '<div class="ff-row">'
-    +     ff('plot_width', 'Width (ft)', 'type="number" min="1" max="1000" inputmode="numeric"', userPlot.width)
-    +     ff('plot_length', 'Length (ft)', 'type="number" min="1" max="1000" inputmode="numeric"', userPlot.length)
+    +     ff('plot_width', 'Width (feet)', 'type="number" min="1" max="1000" inputmode="numeric"', userPlot.width)
+    +     ff('plot_length', 'Length (feet)', 'type="number" min="1" max="1000" inputmode="numeric"', userPlot.length)
     +     '<div class="ff always" id="f_facing"><select id="facing"><option value="">Not sure</option>'
     +       facings.map(f => '<option' + (f === userPlot.facing ? ' selected' : '') + '>' + f + '</option>').join('')
-    +     '</select><label for="facing">Facing</label><div class="ff-error" id="e_facing"></div></div>'
+    +     '</select><label for="facing">Plot direction</label><div class="ff-error" id="e_facing"></div></div>'
     +   '</div>'
     +   '<p class="form-error" id="formError" role="alert"></p>'
     +   '<button class="btn btn-primary btn-submit" type="submit" id="submitBtn"><span class="btn-label">'
-    +     (q.needsReview ? 'Submit for manual review' : 'Confirm &amp; Place Order') + '</span></button>'
-    +   '<p class="fine-print">The final price is always confirmed by our server when you submit.</p>'
+    +     (q.needsReview ? 'Send to our team for pricing' : 'Place my order') + '</span></button>'
+    +   '<p class="fine-print">You don’t pay anything on this page. We will call you first.</p>'
     + '</form>'
     + '<div class="trust">'
-    +   '<span>' + icon('lock') + 'Secure &amp; encrypted</span>'
-    +   '<span>' + icon('clock') + '24-hour response</span>'
+    +   '<span>' + icon('lock') + 'Your details are safe with us</span>'
+    +   '<span>' + icon('clock') + 'We reply within 24 hours</span>'
     +   '<span>' + icon('shield') + '100% satisfaction guarantee</span>'
     + '</div>';
 
@@ -134,11 +134,11 @@ function render(){
     const pos = Math.min(caretDigits, 10) + (caretDigits > 5 ? 1 : 0);
     phone.setSelectionRange(pos, pos);
     if(digits.length === 10) setState('customer_phone', 'valid');
-    else if(phone.dataset.touched) setState('customer_phone', 'invalid', 'Enter a valid 10-digit phone number.');
+    else if(phone.dataset.touched) setState('customer_phone', 'invalid', 'Please type your 10-digit mobile number.');
     else setState('customer_phone', '');
   });
   phone.addEventListener('blur', () => { if(phone.value){ phone.dataset.touched = '1'; checkPhone(); } });
-  [['customer_name', 'Please enter your name.'], ['customer_city', 'Please enter your city.']].forEach(([id, msg]) => {
+  [['customer_name', 'Please type your name.'], ['customer_city', 'Please type your city or town.']].forEach(([id, msg]) => {
     const el = document.getElementById(id);
     el.addEventListener('input', () => { if(el.value.trim()) setState(id, 'valid'); });
     el.addEventListener('blur', () => setState(id, el.value.trim() ? 'valid' : (el.dataset.touched ? 'invalid' : ''), msg));
@@ -158,13 +158,13 @@ function phoneDigits(){ return document.getElementById('customer_phone').value.r
 
 function checkPhone(){
   const ok = /^[0-9]{10}$/.test(phoneDigits());
-  setState('customer_phone', ok ? 'valid' : 'invalid', 'Enter a valid 10-digit phone number.');
+  setState('customer_phone', ok ? 'valid' : 'invalid', 'Please type your 10-digit mobile number.');
   return ok;
 }
 
 function clientValidate(){
   let ok = true;
-  [['customer_name', 'Please enter your name.'], ['customer_city', 'Please enter your city.']].forEach(([id, msg]) => {
+  [['customer_name', 'Please type your name.'], ['customer_city', 'Please type your city or town.']].forEach(([id, msg]) => {
     const el = document.getElementById(id);
     el.dataset.touched = '1';
     if(el.value.trim()) setState(id, 'valid'); else { setState(id, 'invalid', msg); ok = false; }
@@ -180,7 +180,7 @@ function setLoading(on){
   const spinner = btn.querySelector('.spinner');
   if(on && !spinner) btn.insertAdjacentHTML('afterbegin', '<span class="spinner" aria-hidden="true"></span>');
   if(!on && spinner) spinner.remove();
-  btn.querySelector('.btn-label').textContent = on ? 'Placing order…' : (q.needsReview ? 'Submit for manual review' : 'Confirm & Place Order');
+  btn.querySelector('.btn-label').textContent = on ? 'Sending…' : (q.needsReview ? 'Send to our team for pricing' : 'Place my order');
 }
 
 async function submitOrder(e){
@@ -207,7 +207,7 @@ async function submitOrder(e){
     data = await res.json();
   } catch(err) {
     res = {ok:false};
-    data = {error:'We couldn’t reach the server. Check your connection and try again.'};
+    data = {error:'We could not connect. Please check your internet and try again.'};
   }
   if(!res.ok){
     setLoading(false);
@@ -228,16 +228,16 @@ function showSuccess(data){
     + '<div class="confetti" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>'
     + '<svg class="check-anim" viewBox="0 0 80 80" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
     +   '<circle cx="40" cy="40" r="36" transform="rotate(-90 40 40)"/><path d="M25 41l10 10 20-22"/></svg>'
-    + '<h1>' + (data.needs_manual_review ? 'Request received' : 'Order placed') + '</h1>'
+    + '<h1>' + (data.needs_manual_review ? 'Sent to our team!' : 'Order placed!') + '</h1>'
     + '<p class="lead">' + esc(data.design_name) + '</p>'
     + '<div class="code-box"><code id="orderCode">' + esc(data.order_code) + '</code>'
     +   '<button type="button" class="copy-btn" id="copyBtn">' + icon('copy') + '<span>Copy</span></button></div>'
-    + '<p class="small">Save this code — you’ll need it with your phone number to track your order.</p>'
-    + '<div class="success-total"><div class="sum-total"><span>' + (range ? 'Estimated' : 'Total') + '</span><span class="price' + (range ? ' range' : '') + '">'
+    + '<p class="small">This is your order number. Save it. You need it with your mobile number to check your order.</p>'
+    + '<div class="success-total"><div class="sum-total"><span>' + (range ? 'Approx. price' : 'Total price') + '</span><span class="price' + (range ? ' range' : '') + '">'
     +   (range ? fmt(data.total_price) + ' – ' + fmt(data.total_price_max) : fmt(data.total_price)) + '</span></div>'
-    +   (data.estimated_delivery_days ? '<div class="sum-days">Estimated delivery: ' + data.estimated_delivery_days + ' days</div>' : '') + '</div>'
-    + '<p style="margin:20px 0 0">Our team will contact you within 24 hours' + (data.needs_manual_review ? ' to confirm the exact price.' : '.') + '</p>'
-    + '<div class="cta-row"><a class="btn btn-primary lift" href="track.php?code=' + encodeURIComponent(data.order_code) + '">Track your order</a><a class="btn" href="index.php">Browse more designs</a></div>'
+    +   (data.estimated_delivery_days ? '<div class="sum-days">Ready in about ' + data.estimated_delivery_days + ' days</div>' : '') + '</div>'
+    + '<p style="margin:20px 0 0">Our team will call you within 24 hours' + (data.needs_manual_review ? ' to tell you the exact price.' : '.') + '</p>'
+    + '<div class="cta-row"><a class="btn btn-primary lift" href="track.php?code=' + encodeURIComponent(data.order_code) + '">Track my order</a><a class="btn" href="index.php">See more designs</a></div>'
     + '</div>';
   window.scrollTo(0, 0);
 
@@ -250,7 +250,7 @@ function showSuccess(data){
       const range = document.createRange();
       range.selectNodeContents(document.getElementById('orderCode'));
       const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
-      label.textContent = 'Press Ctrl+C';
+      label.textContent = 'Selected — copy it';
       return;
     }
     label.textContent = 'Copied!';

@@ -51,6 +51,6 @@ function structArt() {
         . '<rect x="16" y="62" width="8" height="8"/><rect x="86" y="62" width="8" height="8"/><rect x="156" y="62" width="8" height="8"/>'
         . '<rect x="16" y="112" width="8" height="8"/><rect x="86" y="112" width="8" height="8"/><rect x="156" y="112" width="8" height="8"/>'
         . '</g>'
-        . '<text x="90" y="134" text-anchor="middle" font-size="9" fill="currentColor">column &amp; beam grid</text>'
+        . '<text x="90" y="134" text-anchor="middle" font-size="9" fill="currentColor">pillars (columns) &amp; beams</text>'
         . '</svg>';
 }

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Design Library &#8212; Planzaa</title>
+<title>House Designs &#8212; Planzaa</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -13,19 +13,19 @@
 <?php include __DIR__ . '/partials/nav.php'; ?>
 <main class="wrap page-enter">
   <section class="hero">
-    <div class="eyebrow">Planzaa design library</div>
-    <h1>Ready-made house designs, checked against your plot</h1>
-    <p>Tell us your plot and we'll flag which designs fit exactly, and which would need a modification.</p>
+    <div class="eyebrow">Planzaa house designs</div>
+    <h1>Ready-made house designs for your plot</h1>
+    <p>Type your plot size below. We will show you which designs fit your plot, and which ones we can change to fit.</p>
   </section>
 
   <section class="plot-card" aria-labelledby="plotHeading">
     <h2 id="plotHeading"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17L17 3l4 4L7 21z"/><path d="M7 13l2 2M10 10l2 2M13 7l2 2"/></svg>Enter your plot details</h2>
     <div class="plot-fields">
-      <div class="field"><label for="pWidth">Plot width (ft)</label><input type="number" id="pWidth" min="1" inputmode="numeric" placeholder="e.g. 30"></div>
-      <div class="field"><label for="pLength">Plot length (ft)</label><input type="number" id="pLength" min="1" inputmode="numeric" placeholder="e.g. 40"></div>
-      <div class="field"><label for="pFacing">Facing</label>
+      <div class="field"><label for="pWidth">Plot width (feet)</label><input type="number" id="pWidth" min="1" inputmode="numeric" placeholder="For example 30"></div>
+      <div class="field"><label for="pLength">Plot length (feet)</label><input type="number" id="pLength" min="1" inputmode="numeric" placeholder="For example 40"></div>
+      <div class="field"><label for="pFacing">Plot direction (facing)</label>
         <select id="pFacing">
-          <option value="">Select</option>
+          <option value="">Choose</option>
           <option>East</option><option>West</option><option>North</option><option>South</option>
         </select>
       </div>
@@ -33,17 +33,17 @@
   </section>
 
   <section class="filters" aria-label="Filter designs">
-    <div class="filter-row"><span class="filter-label" id="lblBhk">BHK</span>
+    <div class="filter-row"><span class="filter-label" id="lblBhk">Bedrooms</span>
       <div class="pills" role="group" aria-labelledby="lblBhk" data-group="bhk">
         <button type="button" class="pill active" data-value="">All</button><button type="button" class="pill" data-value="2">2 BHK</button><button type="button" class="pill" data-value="3">3 BHK</button><button type="button" class="pill" data-value="4">4 BHK</button>
       </div>
     </div>
     <div class="filter-row"><span class="filter-label" id="lblFloors">Floors</span>
       <div class="pills" role="group" aria-labelledby="lblFloors" data-group="floors">
-        <button type="button" class="pill active" data-value="">All</button><button type="button" class="pill" data-value="G">Ground</button><button type="button" class="pill" data-value="G+1">G+1</button><button type="button" class="pill" data-value="G+2">G+2</button>
+        <button type="button" class="pill active" data-value="">All</button><button type="button" class="pill" data-value="G">Ground only</button><button type="button" class="pill" data-value="G+1">Ground + 1</button><button type="button" class="pill" data-value="G+2">Ground + 2</button>
       </div>
     </div>
-    <div class="filter-row"><span class="filter-label" id="lblFacing">Facing</span>
+    <div class="filter-row"><span class="filter-label" id="lblFacing">Direction</span>
       <div class="pills" role="group" aria-labelledby="lblFacing" data-group="facing">
         <button type="button" class="pill active" data-value="">All</button><button type="button" class="pill" data-value="East">East</button><button type="button" class="pill" data-value="West">West</button><button type="button" class="pill" data-value="North">North</button><button type="button" class="pill" data-value="South">South</button>
       </div>
@@ -52,7 +52,7 @@
 
   <div class="results-bar">
     <span id="resultsMeta" aria-live="polite">Loading designs&#8230;</span>
-    <button type="button" class="clear-all" id="clearAll">Clear all</button>
+    <button type="button" class="clear-all" id="clearAll">Clear filters</button>
   </div>
   <div class="dgrid enter" id="grid">
     <div class="skeleton" style="--i:0"><div class="sk sk-art"></div><div class="sk sk-line"></div><div class="sk sk-line short"></div></div>
@@ -98,12 +98,12 @@ function render(animate){
   $('clearAll').classList.toggle('show', !!active);
   const matches = list.filter(d => d.match === true).length;
   $('resultsMeta').innerHTML = 'Showing <strong>' + list.length + '</strong> of ' + designs.length + ' designs'
-    + (designs.length && designs[0].match !== null ? ' · ' + matches + ' exact match' + (matches === 1 ? '' : 'es') : '');
+    + (designs.length && designs[0].match !== null ? ' · ' + matches + ' fit' + (matches === 1 ? 's' : '') + ' your plot exactly' : '');
 
   const grid = $('grid');
   grid.classList.toggle('enter', !!animate);
   if(!list.length){
-    grid.innerHTML = '<div class="empty-state"><strong>No designs match these filters.</strong><br>Try a different combination, or <button type="button" class="clear-all show" onclick="clearFilters()">clear all filters</button>.</div>';
+    grid.innerHTML = '<div class="empty-state"><strong>No designs match what you picked.</strong><br>Try another option, or <button type="button" class="clear-all show" onclick="clearFilters()">clear filters</button>.</div>';
     return;
   }
   const q = plotQuery(plot());

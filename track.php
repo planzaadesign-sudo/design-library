@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Track Your Order &#8212; Planzaa</title>
+<title>Track My Order &#8212; Planzaa</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -13,18 +13,18 @@
 <?php include __DIR__ . '/partials/nav.php'; ?>
 <main class="wrap page-enter">
   <form class="track-card" id="trackForm" novalidate>
-    <h1>Track your order</h1>
-    <p class="lead">Enter the order code and phone number you used when placing the order.</p>
-    <div class="ff big" id="f_code"><input id="code" placeholder=" " maxlength="10" autocomplete="off" spellcheck="false"><label for="code">Order code (PZL-XXXXXX)</label><div class="ff-error" id="e_code"></div></div>
-    <div class="ff" id="f_phone"><input id="phone" placeholder=" " type="tel" inputmode="numeric" maxlength="11" autocomplete="tel-national"><label for="phone">Phone number</label><div class="ff-error" id="e_phone"></div></div>
+    <h1>Track my order</h1>
+    <p class="lead">Type the order number you got when you ordered, and your mobile number.</p>
+    <div class="ff big" id="f_code"><input id="code" placeholder=" " maxlength="10" autocomplete="off" spellcheck="false"><label for="code">Order number (like PZL-1A2B3C)</label><div class="ff-error" id="e_code"></div></div>
+    <div class="ff" id="f_phone"><input id="phone" placeholder=" " type="tel" inputmode="numeric" maxlength="11" autocomplete="tel-national"><label for="phone">Mobile number</label><div class="ff-error" id="e_phone"></div></div>
     <p class="form-error" id="trackError" role="alert"></p>
-    <button class="btn btn-primary btn-submit" type="submit" id="trackBtn"><span class="btn-label">Track Order</span></button>
+    <button class="btn btn-primary btn-submit" type="submit" id="trackBtn"><span class="btn-label">Track my order</span></button>
   </form>
   <div id="result" class="track-results" aria-live="polite"></div>
 </main>
 <?php include __DIR__ . '/partials/footer.php'; ?>
 <script>
-const STAGES = [['new','New'], ['design','Design'], ['structural','Structural'], ['compliance','Compliance'], ['delivered','Delivered']];
+const STAGES = [['new','Order received'], ['design','Design work'], ['structural','Safety drawings'], ['compliance','Final checks'], ['delivered','Ready']];
 const $ = id => document.getElementById(id);
 $('code').value = new URLSearchParams(window.location.search).get('code') || '';
 if($('code').value) $('phone').focus();
@@ -46,7 +46,7 @@ function setLoading(on){
   const spinner = $('trackBtn').querySelector('.spinner');
   if(on && !spinner) $('trackBtn').insertAdjacentHTML('afterbegin', '<span class="spinner" aria-hidden="true"></span>');
   if(!on && spinner) spinner.remove();
-  $('trackBtn').querySelector('.btn-label').textContent = on ? 'Looking up…' : 'Track Order';
+  $('trackBtn').querySelector('.btn-label').textContent = on ? 'Looking for your order…' : 'Track my order';
 }
 
 $('trackForm').addEventListener('submit', async e => {
@@ -55,18 +55,18 @@ $('trackForm').addEventListener('submit', async e => {
   const code = $('code').value.trim().toUpperCase();
   const phone = $('phone').value.replace(/\D/g, '');
   let ok = true;
-  if(!/^PZL-[0-9A-F]{6}$/.test(code)){ setErr('code', 'Order codes look like PZL-1A2B3C.'); ok = false; }
-  if(!/^[0-9]{10}$/.test(phone)){ setErr('phone', 'Enter the 10-digit phone number you ordered with.'); ok = false; }
+  if(!/^PZL-[0-9A-F]{6}$/.test(code)){ setErr('code', 'Your order number looks like PZL-1A2B3C. Please check it.'); ok = false; }
+  if(!/^[0-9]{10}$/.test(phone)){ setErr('phone', 'Please type the 10-digit mobile number you used to order.'); ok = false; }
   if(!ok) return;
 
   setLoading(true);
   try {
     const res = await fetch('api/track.php', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({order_code:code, phone})});
     const data = await res.json();
-    if(!res.ok){ $('result').innerHTML = ''; $('trackError').textContent = data.error || 'No order found with this code and phone number.'; return; }
+    if(!res.ok){ $('result').innerHTML = ''; $('trackError').textContent = data.error || 'We could not find an order with this order number and mobile number. Please check both and try again.'; return; }
     renderOrder(data);
   } catch(err) {
-    $('trackError').textContent = 'We couldn’t reach the server. Please try again.';
+    $('trackError').textContent = 'We could not connect. Please check your internet and try again.';
   } finally {
     setLoading(false);
   }
@@ -84,24 +84,24 @@ function renderOrder(o){
   }).join('');
   const mods = o.modifications.length
     ? '<ul>' + o.modifications.map(l => '<li>' + esc(l) + '</li>').join('') + '</ul>'
-    : 'None — purchased as-is';
+    : 'No changes — bought as it is';
 
   $('result').innerHTML =
     '<div class="status-card">'
     + '<div class="status-head"><div><div class="eyebrow">' + esc(o.order_code) + '</div><h2>' + esc(o.design_name) + '</h2></div>'
     +   '<span class="badge ' + (delivered ? 'badge-match' : 'b-blue') + '">' + esc(STAGES[idx] ? STAGES[idx][1] : o.status) + '</span></div>'
     + '<ol class="tstepper" aria-label="Order progress">' + steps + '</ol>'
-    + (o.needs_manual_review ? '<div class="note note-danger">' + icon('info') + '<span>This order is in manual review — our team will confirm the final price with you.</span></div>' : '')
+    + (o.needs_manual_review ? '<div class="note note-danger">' + icon('info') + '<span>Your changes are big, so our team is checking them. We will call you with the exact price.</span></div>' : '')
     + '<dl class="details">'
     +   '<div class="drow"><dt>Design</dt><dd>' + esc(o.design_name) + '</dd></div>'
     +   '<div class="drow"><dt>Ordered on</dt><dd>' + dateLabel + '</dd></div>'
-    +   '<div class="drow"><dt>' + (o.needs_manual_review ? 'Estimate from' : 'Total price') + '</dt><dd>' + fmt(o.total_price) + '</dd></div>'
-    +   '<div class="drow"><dt>Structural design</dt><dd>' + (o.structural ? 'Included' : 'Not included') + '</dd></div>'
-    +   '<div class="drow"><dt>Modifications</dt><dd>' + mods + '</dd></div>'
-    +   (o.estimated_delivery_days ? '<div class="drow"><dt>Estimated delivery</dt><dd>' + o.estimated_delivery_days + ' days</dd></div>' : '')
+    +   '<div class="drow"><dt>' + (o.needs_manual_review ? 'Price starts from' : 'Total price') + '</dt><dd>' + fmt(o.total_price) + '</dd></div>'
+    +   '<div class="drow"><dt>' + STRUCT_NAME + '</dt><dd>' + (o.structural ? 'Included' : 'Not included') + '</dd></div>'
+    +   '<div class="drow"><dt>Your changes</dt><dd>' + mods + '</dd></div>'
+    +   (o.estimated_delivery_days ? '<div class="drow"><dt>Ready in about</dt><dd>' + o.estimated_delivery_days + ' days</dd></div>' : '')
     + '</dl>'
     + '<div class="help-banner"><span class="ic-wrap">' + icon('phone', 'ic-lg') + '</span>'
-    +   '<span><strong>Need help?</strong>Call <a href="' + CONTACT.tel + '">' + CONTACT.phone + '</a> or <a href="' + CONTACT.whatsapp + '" target="_blank" rel="noopener">WhatsApp us</a> with your order code.</span></div>'
+    +   '<span><strong>Need help?</strong>Call us on <a href="' + CONTACT.tel + '">' + CONTACT.phone + '</a> or <a href="' + CONTACT.whatsapp + '" target="_blank" rel="noopener">message us on WhatsApp</a>. Keep your order number ready.</span></div>'
     + '</div>';
   $('result').scrollIntoView({behavior:'smooth', block:'start'});
 }

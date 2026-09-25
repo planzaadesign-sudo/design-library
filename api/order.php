@@ -30,17 +30,17 @@ $modIds = $input['modifications'] ?? [];
 
 // Field-level errors so the order form can show each message next to its field.
 $errors = [];
-if ($name === '' || mb_strlen($name) > 100) $errors['customer_name'] = 'Please enter your name.';
-if (!preg_match('/^[0-9]{10}$/', $phone)) $errors['customer_phone'] = 'Enter a valid 10-digit phone number.';
-if ($city === '' || mb_strlen($city) > 100) $errors['customer_city'] = 'Please enter your city.';
-if ($plotWidth !== null && ($plotWidth < 1 || $plotWidth > 1000)) $errors['plot_width'] = 'Enter a plot width between 1 and 1000 ft.';
-if ($plotLength !== null && ($plotLength < 1 || $plotLength > 1000)) $errors['plot_length'] = 'Enter a plot length between 1 and 1000 ft.';
-if ($facing !== null && !in_array($facing, $FACINGS, true)) $errors['facing'] = 'Choose a valid facing.';
-if (!is_array($modIds) || count($modIds) > 20) $errors['modifications'] = 'Invalid modification list.';
+if ($name === '' || mb_strlen($name) > 100) $errors['customer_name'] = 'Please type your name.';
+if (!preg_match('/^[0-9]{10}$/', $phone)) $errors['customer_phone'] = 'Please type your 10-digit mobile number.';
+if ($city === '' || mb_strlen($city) > 100) $errors['customer_city'] = 'Please type your city or town.';
+if ($plotWidth !== null && ($plotWidth < 1 || $plotWidth > 1000)) $errors['plot_width'] = 'Please type a plot width between 1 and 1000 feet.';
+if ($plotLength !== null && ($plotLength < 1 || $plotLength > 1000)) $errors['plot_length'] = 'Please type a plot length between 1 and 1000 feet.';
+if ($facing !== null && !in_array($facing, $FACINGS, true)) $errors['facing'] = 'Please choose East, West, North or South.';
+if (!is_array($modIds) || count($modIds) > 20) $errors['modifications'] = 'Something went wrong with the changes you picked. Please go back and pick them again.';
 
 if (!$designId) {
     http_response_code(400);
-    echo json_encode(['error' => 'No design selected.']);
+    echo json_encode(['error' => 'Please choose a design first.']);
     exit;
 }
 if ($errors) {
@@ -56,7 +56,7 @@ $design = $stmt->fetch();
 
 if (!$design) {
     http_response_code(404);
-    echo json_encode(['error' => 'Design not found']);
+    echo json_encode(['error' => 'We could not find this design. Please pick another one.']);
     exit;
 }
 
@@ -69,7 +69,7 @@ if ($modIds) {
     $mods = $stmt->fetchAll();
     if (count($mods) !== count($modIds)) {
         http_response_code(400);
-        echo json_encode(['error' => 'One of the selected modifications is no longer available. Please go back and review your selection.']);
+        echo json_encode(['error' => 'One of the changes you picked is no longer available. Please go back and pick again.']);
         exit;
     }
 }

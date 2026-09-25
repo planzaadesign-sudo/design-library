@@ -35,7 +35,7 @@ function effectiveModPrice(mod, structural){
 }
 
 function modPriceLabel(mod, structural){
-  if(mod.tier === 4) return fmt(mod.price_min) + ' – ' + fmt(mod.price_max) + ' (est.)';
+  if(mod.tier === 4) return fmt(mod.price_min) + ' – ' + fmt(mod.price_max) + ' (approx.)';
   return '+' + fmt(effectiveModPrice(mod, structural));
 }
 
@@ -69,12 +69,21 @@ function quote(design, mods, structural, structAddon){
 
 function totalLabel(q){ return q.isRange ? fmt(q.min) + ' – ' + fmt(q.max) : fmt(q.min); }
 
+// Customer-facing wording is deliberately plain: written for someone who has
+// never hired an architect. Keep new text just as simple.
 const TIERS = {
-  1: {title:'Cosmetic', sub:'No structural change', cls:'tier-1'},
-  2: {title:'Space planning', sub:'Rearranging within the existing structure', cls:'tier-2'},
-  3: {title:'Structural change', sub:'Touches walls, beams or the footprint', cls:'tier-3'},
-  4: {title:'Major', sub:'Needs a manual quote', cls:'tier-4'},
+  1: {title:'Simple changes', sub:'No wall changes needed', cls:'tier-1'},
+  2: {title:'Room changes', sub:'Moving walls inside', cls:'tier-2'},
+  3: {title:'Big changes', sub:'Affects the building structure', cls:'tier-3'},
+  4: {title:'Very big changes', sub:'Our team will give you a price', cls:'tier-4'},
 };
+
+const STRUCT_NAME = 'Building safety drawings';
+
+// "G+1" means ground floor plus one floor above.
+function floorsLabel(f){
+  return ({'G':'Ground floor only', 'G+1':'Ground + 1 floor', 'G+2':'Ground + 2 floors'})[f] || f;
+}
 
 const CONTACT = {phone:'+91-8920218394', tel:'tel:+918920218394', whatsapp:'https://wa.me/918920218394'};
 
@@ -113,10 +122,10 @@ function flash(el){
 
 function matchBadge(match, pop){
   const cls = pop ? ' pop' : '';
-  if(match === null || match === undefined) return '<span class="badge badge-neutral' + cls + '">Enter your plot to check fit</span>';
+  if(match === null || match === undefined) return '<span class="badge badge-neutral' + cls + '">Enter your plot size above to see which designs match</span>';
   return match
-    ? '<span class="badge badge-match' + cls + '">Exact match</span>'
-    : '<span class="badge badge-amber' + cls + '">Needs modification</span>';
+    ? '<span class="badge badge-match' + cls + '">Fits your plot exactly</span>'
+    : '<span class="badge badge-amber' + cls + '">Can be changed to fit your plot</span>';
 }
 
 // Design card shared by the library grid and "You might also like".
@@ -125,10 +134,10 @@ function designCard(d, query, i, pop){
     + '<div class="dcard-art">' + d.floor_plan_svg + '</div>'
     + '<div class="dcard-body">'
     +   '<div class="dcard-name">' + esc(d.name) + '</div>'
-    +   '<div class="tags"><span class="tag">' + d.plot_width + '×' + d.plot_length + ' ft</span><span class="tag">' + esc(d.facing) + ' facing</span><span class="tag">' + esc(d.floors) + '</span><span class="tag">' + d.bhk + ' BHK</span></div>'
+    +   '<div class="tags"><span class="tag">' + d.plot_width + '×' + d.plot_length + ' ft plot</span><span class="tag">' + esc(d.facing) + ' facing</span><span class="tag">' + esc(floorsLabel(d.floors)) + '</span><span class="tag">' + d.bhk + ' BHK</span></div>'
     +   matchBadge(d.match, pop)
-    +   '<div class="dcard-foot"><div><span class="dprice">' + fmt(d.base_price) + '</span><span class="ddays">' + d.delivery_days + '-day delivery</span></div>'
-    +   '<span class="view-btn">View Details <span class="arrow" aria-hidden="true">→</span></span></div>'
+    +   '<div class="dcard-foot"><div><span class="dprice">' + fmt(d.base_price) + '</span><span class="ddays">Ready in ' + d.delivery_days + ' days</span></div>'
+    +   '<span class="view-btn">See this design <span class="arrow" aria-hidden="true">→</span></span></div>'
     + '</div></a>';
 }
 

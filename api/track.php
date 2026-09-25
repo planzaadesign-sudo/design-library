@@ -15,7 +15,7 @@ if (!is_array($input)) $input = $_POST;
 $code = strtoupper(trim((string)($input['order_code'] ?? '')));
 $phone = trim((string)($input['phone'] ?? ''));
 
-$notFound = 'No order found with this code and phone number.';
+$notFound = 'We could not find an order with this order number and mobile number. Please check both and try again.';
 if (!preg_match('/^PZL-[0-9A-F]{6}$/', $code) || !preg_match('/^[0-9]{10}$/', $phone)) {
     http_response_code(404);
     echo json_encode(['error' => $notFound]);

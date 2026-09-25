@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Customise Design &#8212; Planzaa</title>
+<title>Change a Design &#8212; Planzaa</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -11,7 +11,7 @@
 </head>
 <body class="site">
 <?php include __DIR__ . '/partials/nav.php'; ?>
-<main class="wrap page-enter" id="app"><p class="muted">Loading configurator&#8230;</p></main>
+<main class="wrap page-enter" id="app"><p class="muted">Loading&#8230;</p></main>
 <?php include __DIR__ . '/partials/footer.php'; ?>
 <script>
 const params = new URLSearchParams(window.location.search);
@@ -35,14 +35,14 @@ async function load(){
     fetch('api/modifications.php'),
   ]);
   if(!dRes || !dRes.ok || !mRes.ok){
-    document.getElementById('app').innerHTML = '<h1>Design not found</h1><p class="muted" style="margin:10px 0 20px">This design may have been removed.</p><a class="btn" href="index.php">← Back to designs</a>';
+    document.getElementById('app').innerHTML = '<h1>We could not find this design</h1><p class="muted" style="margin:10px 0 20px">It may have been removed. Please pick another design.</p><a class="btn" href="index.php">← Back to all designs</a>';
     return;
   }
   design = normDesign(await dRes.json());
   groups = await mRes.json();
   groups.forEach(g => g.items.forEach(m => { modsById[m.id] = m; }));
   [...selected].forEach(id => { if(!modsById[id]) selected.delete(id); });
-  document.title = 'Customise ' + design.name + ' — Planzaa';
+  document.title = 'Change ' + design.name + ' — Planzaa';
   renderShell();
   update();
 }
@@ -68,7 +68,7 @@ function renderShell(){
           '<label class="mod-row" data-id="' + m.id + '" style="--i:' + (rowIndex++) + '">'
           + '<input type="checkbox" value="' + m.id + '"' + (selected.has(m.id) ? ' checked' : '') + '>'
           + '<span><span class="mod-label">' + esc(m.label) + '</span>'
-          + (m.added_days ? '<span class="mod-days">+' + m.added_days + ' day' + (m.added_days === 1 ? '' : 's') + ' delivery</span>' : '')
+          + (m.added_days ? '<span class="mod-days">Adds ' + m.added_days + ' day' + (m.added_days === 1 ? '' : 's') + ' to the work</span>' : '')
           + '</span>'
           + '<span class="mod-price" data-price-for="' + m.id + '"></span>'
           + '</label>').join('')
@@ -76,11 +76,11 @@ function renderShell(){
   }).join('');
 
   document.getElementById('app').innerHTML =
-    '<nav class="breadcrumb" aria-label="Breadcrumb"><a href="design.php?id=' + design.id + (q ? '&' + q : '') + '">← Back to design</a><span aria-hidden="true">/</span><span class="current">Customise</span></nav>'
+    '<nav class="breadcrumb" aria-label="Breadcrumb"><a href="design.php?id=' + design.id + (q ? '&' + q : '') + '">← Back to design</a><span aria-hidden="true">/</span><span class="current">Change this design</span></nav>'
     + '<div class="config-head">'
     +   '<div class="thumb">' + design.floor_plan_svg + '</div>'
-    +   '<div><div class="eyebrow">Customise</div><h1>' + esc(design.name) + '</h1>'
-    +   '<div class="meta">' + design.plot_width + '×' + design.plot_length + ' ft · ' + esc(design.facing) + ' facing · ' + esc(design.floors) + ' · ' + design.bhk + ' BHK · base ' + fmt(design.base_price) + '</div></div>'
+    +   '<div><div class="eyebrow">Change this design</div><h1>' + esc(design.name) + '</h1>'
+    +   '<div class="meta">' + design.plot_width + '×' + design.plot_length + ' ft plot · ' + esc(design.facing) + ' facing · ' + esc(floorsLabel(design.floors)) + ' · ' + design.bhk + ' BHK · Design price ' + fmt(design.base_price) + '</div></div>'
     + '</div>'
     + '<div class="steps-bar">'
     +   '<div class="steps-text" id="stepsText" aria-live="polite"></div>'
@@ -88,16 +88,16 @@ function renderShell(){
     + '</div>'
     + '<div class="config-layout">'
     +   '<div>'
-    +     '<div class="step-label" id="step1"><span class="step-num">1</span><h2>Choose your scope</h2></div>'
+    +     '<div class="step-label" id="step1"><span class="step-num">1</span><h2>Do you want building safety drawings?</h2></div>'
     +     '<div class="choice-grid">'
-    +       choiceCard(1, 'Include structural design', 'Engineer-reviewed structural drawings for any changed elements.', 'Recommended')
-    +       choiceCard(0, 'Architectural only', 'Lower price. You’ll arrange structural sign-off separately before construction.')
+    +       choiceCard(1, 'Yes, include building safety drawings', 'An engineer checks that your changes are safe. You get column (pillar), beam and foundation drawings for them.', 'Recommended')
+    +       choiceCard(0, 'Design only — no building safety drawings', 'Costs less. You will need to get your own engineer to check safety before you start building.')
     +     '</div>'
-    +     '<div class="step-label" id="step2"><span class="step-num">2</span><h2>Select modifications</h2></div>'
-    +     '<p class="muted" style="font-size:14px; margin:-6px 0 14px">Prices update as you go. Everything is reviewed by our design team before work starts.</p>'
+    +     '<div class="step-label" id="step2"><span class="step-num">2</span><h2>What do you want to change?</h2></div>'
+    +     '<p class="muted" style="font-size:14px; margin:-6px 0 14px">Tick the changes you want. The price updates right away. Our team checks everything before we start work.</p>'
     +     tiersHtml
     +     '<div class="help-banner"><span class="ic-wrap">' + icon('phone', 'ic-lg') + '</span>'
-    +       '<span><strong>Need help choosing?</strong>Call <a href="' + CONTACT.tel + '">' + CONTACT.phone + '</a> or <a href="' + CONTACT.whatsapp + '" target="_blank" rel="noopener">WhatsApp us</a>.</span></div>'
+    +       '<span><strong>Not sure what to pick?</strong>Call us on <a href="' + CONTACT.tel + '">' + CONTACT.phone + '</a> or <a href="' + CONTACT.whatsapp + '" target="_blank" rel="noopener">message us on WhatsApp</a>.</span></div>'
     +   '</div>'
     +   '<aside class="summary" id="summary" aria-live="polite"></aside>'
     + '</div>';
@@ -134,8 +134,8 @@ function setStep(n){
   if(n < step) return;
   step = n;
   document.getElementById('stepsText').innerHTML = step === 1
-    ? '<strong>Step 1 of 2</strong> — Choose your scope'
-    : '<strong>Step 2 of 2</strong> — Select modifications';
+    ? '<strong>Step 1 of 2</strong> — Choose building safety drawings'
+    : '<strong>Step 2 of 2</strong> — Pick your changes';
   document.querySelectorAll('.steps-seg')[1].classList.toggle('on', step === 2);
 }
 
@@ -165,7 +165,7 @@ function update(){
   const q = quote(design, mods, structural, false);
   const lines = mods.length
     ? mods.map(m => '<div class="sum-line sub"><span>' + esc(m.label) + '</span><span>' + (m.tier === 4 ? fmt(m.price_min) + '–' + fmt(m.price_max) : fmt(effectiveModPrice(m, structural))) + '</span></div>').join('')
-    : '<div class="sum-empty">No changes selected yet.</div>';
+    : '<div class="sum-empty">You have not picked any changes yet.</div>';
 
   const next = new URLSearchParams(plotQuery(userPlot));
   next.set('id', design.id);
@@ -176,16 +176,16 @@ function update(){
   const total = totalLabel(q);
   document.getElementById('summary').innerHTML =
     '<h3>Your order</h3>'
-    + '<div class="sum-line"><span>' + esc(design.name) + '</span><span>' + fmt(design.base_price) + '</span></div>'
-    + '<div class="sum-line sub"><span>Structural design</span><span>' + (structural ? 'Included' : 'Not included') + '</span></div>'
+    + '<div class="sum-line"><span>' + esc(design.name) + ' (design price)</span><span>' + fmt(design.base_price) + '</span></div>'
+    + '<div class="sum-line sub"><span>' + STRUCT_NAME + '</span><span>' + (structural ? 'Included' : 'Not included') + '</span></div>'
     + '<div class="sum-mods">' + lines + '</div>'
-    + '<div class="sum-total"><span>' + (q.isRange ? 'Estimated' : 'Total') + '</span><span class="price flash' + (q.isRange ? ' range' : '') + '" id="sumTotal">' + total + '</span></div>'
-    + '<div class="sum-days">Estimated delivery: ' + q.days + ' days</div>'
-    + (q.structuralWarning ? '<div class="note note-warn' + (shown.warn ? ' still' : '') + '">' + icon('warning') + '<span>Some selected changes affect structural elements. We recommend including structural design.</span></div>' : '')
-    + (q.needsReview ? '<div class="note note-danger' + (shown.review ? ' still' : '') + '">' + icon('info') + '<span>This combination needs a manual review. Our team will confirm the exact price within 24 hours.</span></div>' : '')
+    + '<div class="sum-total"><span>' + (q.isRange ? 'Approx. price' : 'Total price') + '</span><span class="price flash' + (q.isRange ? ' range' : '') + '" id="sumTotal">' + total + '</span></div>'
+    + '<div class="sum-days">Ready in about ' + q.days + ' days</div>'
+    + (q.structuralWarning ? '<div class="note note-warn' + (shown.warn ? ' still' : '') + '">' + icon('warning') + '<span>Some of your changes affect the building structure. We suggest you add building safety drawings (Step 1).</span></div>' : '')
+    + (q.needsReview ? '<div class="note note-danger' + (shown.review ? ' still' : '') + '">' + icon('info') + '<span>These changes are big — our team will check and tell you the exact price within 24 hours.</span></div>' : '')
     + '<a class="btn btn-primary btn-block lift' + (mods.length ? '' : ' disabled') + '" href="order.php?' + next.toString() + '"' + (mods.length ? '' : ' aria-disabled="true" tabindex="-1"') + '>'
-    +   (q.needsReview ? 'Submit for manual review' : 'Confirm &amp; pay deposit') + '</a>'
-    + (mods.length ? '' : '<p class="helper">Select at least one change to continue, or <a href="design.php?id=' + design.id + (plotQuery(userPlot) ? '&' + plotQuery(userPlot) : '') + '">buy the design as-is</a>.</p>');
+    +   (q.needsReview ? 'Send to our team for pricing' : 'Place my order') + '</a>'
+    + (mods.length ? '' : '<p class="helper">Tick at least one change to continue. Or <a href="design.php?id=' + design.id + (plotQuery(userPlot) ? '&' + plotQuery(userPlot) : '') + '">buy this design as it is</a>.</p>');
 
   shown.warn = q.structuralWarning; shown.review = q.needsReview;
   if(lastTotal !== null && lastTotal !== total) flash(document.getElementById('sumTotal'));

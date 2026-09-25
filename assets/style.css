@@ -268,7 +268,7 @@ body.site .field label{font-weight:500;}
 @media (max-width:560px){.plot-fields{grid-template-columns:1fr 1fr;} .plot-fields .field:last-child{grid-column:1/-1;}}
 .filters{display:grid; gap:10px; margin-top:20px;}
 .filter-row{display:flex; align-items:center; gap:12px; min-width:0;}
-.filter-label{flex:none; width:62px; font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:.06em; color:var(--text-muted);}
+.filter-label{flex:none; width:80px; font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:.06em; color:var(--text-muted);}
 .pills{display:flex; gap:8px; overflow-x:auto; min-width:0; padding:3px; margin:-3px; scrollbar-width:none;}
 .pills::-webkit-scrollbar{display:none;}
 .pill{flex:none; font:inherit; font-size:13px; font-weight:500; padding:7px 15px; border-radius:999px; border:1px solid var(--border-strong); background:transparent; color:var(--text-secondary); cursor:pointer;}
@@ -289,7 +289,7 @@ body.site .field label{font-weight:500;}
 .dcard-name{font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:18px; line-height:1.25;}
 .tags{display:flex; flex-wrap:wrap; gap:6px;}
 .tag{font-size:12px; padding:3px 9px; border-radius:999px; background:var(--surface-2); color:var(--text-secondary);}
-.dcard .badge{align-self:flex-start;}
+.dcard .badge{align-self:flex-start; white-space:normal;}
 .badge.pop{animation:popIn 300ms ease-out both;}
 .badge-amber{background:var(--amber-soft); color:var(--amber);}
 .dcard-foot{margin-top:auto; padding-top:14px; border-top:1px solid var(--border); display:flex; justify-content:space-between; align-items:flex-end; gap:10px;}
@@ -353,7 +353,7 @@ body.site .field label{font-weight:500;}
 .disclosure:hover{text-decoration:underline;}
 .chev{transition:transform 250ms ease;}
 [aria-expanded="true"] > .chev{transform:rotate(180deg);}
-.pkg-list{list-style:none; margin:12px 0 0 56px; padding:12px 0 0; border-top:1px dashed var(--border-strong); display:grid; grid-template-columns:1fr 1fr; gap:10px 16px; font-size:13px;}
+.pkg-list{list-style:none; margin:12px 0 0 56px; padding:12px 0 0; border-top:1px dashed var(--border-strong); display:grid; grid-template-columns:1fr; gap:10px 16px; font-size:13px;}
 .pkg-list li{display:flex; align-items:center; gap:8px; animation:fadeInUp 300ms ease-out backwards; animation-delay:calc(var(--i,0) * 40ms);}
 .pkg-list .ic{color:var(--accent);}
 @media (max-width:480px){.pkg-list, .disclosure{margin-left:0;} .pkg-list{grid-template-columns:1fr;}}

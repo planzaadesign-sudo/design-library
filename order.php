@@ -7,16 +7,12 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/style.css?v=20260925b">
+<link rel="stylesheet" href="assets/style.css?v=20260925c">
 </head>
-<body>
-<div class="topbar"><div class="topbar-inner topnav">
-  <div class="wordmark"><a href="index.php">planzaa<span>.</span> design library</a></div>
-  <nav class="navlinks"><a href="index.php" class="active">Designs</a><a href="track.php">Track order</a></nav>
-</div></div>
-<div class="wrap" id="app"><p>Loading...</p></div>
-
-<script src="assets/app.js?v=20260925b"></script>
+<body class="site">
+<?php include __DIR__ . '/partials/nav.php'; ?>
+<main class="wrap page-enter"><div class="narrow" id="app"><p class="muted">Loading your order&#8230;</p></div></main>
+<?php include __DIR__ . '/partials/footer.php'; ?>
 <script>
 const params = new URLSearchParams(window.location.search);
 const designId = parseInt(params.get('id'), 10);
@@ -37,7 +33,7 @@ async function load(){
     isCustom ? fetch('api/modifications.php') : null,
   ]);
   if(!dRes || !dRes.ok || (mRes && !mRes.ok)){
-    document.getElementById('app').innerHTML = '<h1>Design not found</h1><p class="section-gap">This design may have been removed.</p><a class="btn" href="index.php">← Back to library</a>';
+    document.getElementById('app').innerHTML = '<h1>Design not found</h1><p class="lead">This design may have been removed.</p><a class="btn" href="index.php">← Back to designs</a>';
     return;
   }
   design = normDesign(await dRes.json());
@@ -57,110 +53,148 @@ function backLink(){
   if(isCustom){
     back.set('structural', structural ? '1' : '0');
     back.set('mods', mods.map(m => m.id).join(','));
-    return '<a class="back-link" href="customize.php?' + back + '">← Edit your changes</a>';
+    return '<a class="back" href="customize.php?' + back + '">← Edit your changes</a>';
   }
-  return '<a class="back-link" href="design.php?' + back + '">← Back to design</a>';
+  return '<a class="back" href="design.php?' + back + '">← Back to design</a>';
 }
 
-function summaryHtml(){
-  let rows = '<div class="sum-line"><span>' + esc(design.name) + '</span><span>' + fmt(design.base_price) + '</span></div>';
+function summaryBody(){
+  let rows = '<div class="sum-line"><span>Base design</span><span>' + fmt(design.base_price) + '</span></div>';
   if(isCustom){
     rows += '<div class="sum-line sub"><span>Structural design</span><span>' + (structural ? 'Included' : 'Not included') + '</span></div>'
       + '<div class="sum-mods">' + mods.map(m => '<div class="sum-line sub"><span>' + esc(m.label) + '</span><span>'
       + (m.tier === 4 ? fmt(m.price_min) + '–' + fmt(m.price_max) : fmt(effectiveModPrice(m, structural))) + '</span></div>').join('') + '</div>';
   } else {
-    rows += '<div class="sum-line sub"><span>Structural design package</span><span>' + (structAddon ? fmt(structAddonPrice(design.base_price)) : 'No') + '</span></div>';
+    rows += '<div class="sum-line sub"><span>Structural design package</span><span>' + (structAddon ? fmt(structAddonPrice(design.base_price)) : 'Not added') + '</span></div>';
   }
-  return '<h3>Order summary</h3>' + rows
+  return rows
     + '<div class="sum-total"><span>' + (q.isRange ? 'Estimated' : 'Total') + '</span><span class="price' + (q.isRange ? ' range' : '') + '">' + totalLabel(q) + '</span></div>'
-    + '<div class="sum-days">Estimated delivery: <strong>' + q.days + ' days</strong></div>'
-    + (q.structuralWarning ? '<div class="warn">Some selected changes affect structural elements. We recommend including structural design.</div>' : '')
-    + (q.needsReview ? '<div class="review-note">This combination needs a manual review. Our team will confirm the exact price within 24 hours.</div>' : '');
+    + '<div class="sum-days">Estimated delivery: ' + q.days + ' days</div>'
+    + (q.structuralWarning ? '<div class="note note-warn">' + icon('warning') + '<span>Some selected changes affect structural elements. We recommend including structural design.</span></div>' : '')
+    + (q.needsReview ? '<div class="note note-danger">' + icon('info') + '<span>This combination needs a manual review. Our team will confirm the exact price within 24 hours.</span></div>' : '');
 }
 
-function field(id, label, attrs, value){
-  return '<div class="field" id="f_' + id + '"><label for="' + id + '">' + label + '</label>'
-    + '<input id="' + id + '" ' + attrs + ' value="' + esc(value || '') + '"><div class="field-error" id="e_' + id + '"></div></div>';
+// Floating-label field: the label sits inside the input and floats up on focus or once filled.
+function ff(id, label, attrs, value){
+  return '<div class="ff" id="f_' + id + '"><input id="' + id + '" placeholder=" " ' + attrs + ' value="' + esc(value || '') + '">'
+    + '<label for="' + id + '">' + label + '</label><div class="ff-error" id="e_' + id + '" aria-live="polite"></div></div>';
 }
 
 function render(){
   const facings = ['East', 'West', 'North', 'South'];
+  const expanded = window.matchMedia('(min-width: 768px)').matches;
   document.getElementById('app').innerHTML =
     backLink()
-    + '<h1 style="margin-top:14px">' + (q.needsReview ? 'Request your customised design' : 'Place your order') + '</h1>'
-    + '<p class="section-gap">We’ll confirm the details with you by phone before any work begins.</p>'
-    + '<div class="order-layout">'
-    +   '<form id="orderForm" novalidate>'
-    +     '<div class="form-section"><h2>Your details</h2>'
-    +       field('customer_name', 'Full name', 'autocomplete="name" maxlength="100" required')
-    +       '<div class="form-row">'
-    +         field('customer_phone', 'Phone number (10 digits)', 'type="tel" inputmode="numeric" autocomplete="tel-national" maxlength="10" required')
-    +         field('customer_city', 'City', 'autocomplete="address-level2" maxlength="100" required')
-    +       '</div>'
-    +     '</div>'
-    +     '<div class="form-section"><h2>Plot details <span class="muted" style="font-weight:400; font-size:13px">(optional)</span></h2>'
-    +       '<div class="form-row">'
-    +         field('plot_width', 'Width (ft)', 'type="number" min="1" max="1000"', userPlot.width)
-    +         field('plot_length', 'Length (ft)', 'type="number" min="1" max="1000"', userPlot.length)
-    +         '<div class="field" id="f_facing"><label for="facing">Facing</label><select id="facing"><option value="">Select</option>'
-    +           facings.map(f => '<option' + (f === userPlot.facing ? ' selected' : '') + '>' + f + '</option>').join('')
-    +         '</select><div class="field-error" id="e_facing"></div></div>'
-    +       '</div>'
-    +     '</div>'
-    +     '<div class="error-note" id="formError" role="alert"></div>'
-    +     '<button class="btn btn-primary btn-block" type="submit" id="submitBtn" style="padding:14px; font-size:16px">'
-    +       (q.needsReview ? 'Submit for manual review' : 'Confirm &amp; Place Order') + '</button>'
-    +     '<p class="muted" style="font-size:12px; text-align:center; margin-top:10px">The final price is always confirmed by our server when you submit.</p>'
-    +   '</form>'
-    +   '<aside class="summary">' + summaryHtml() + '</aside>'
+    + '<h1>' + (q.needsReview ? 'Request your customised design' : 'Place your order') + '</h1>'
+    + '<p class="lead">We’ll confirm the details with you by phone before any work begins.</p>'
+    + '<div class="sum-card">'
+    +   '<button type="button" class="sum-toggle" id="sumToggle" aria-expanded="' + expanded + '" aria-controls="sumBody">'
+    +     '<span class="t-name"><small>Order summary</small><strong>' + esc(design.name) + '</strong></span>'
+    +     '<span class="t-total">' + totalLabel(q) + '</span>' + icon('chevron', 'chev')
+    +   '</button>'
+    +   '<div class="sum-body" id="sumBody"' + (expanded ? '' : ' hidden') + '>' + summaryBody() + '</div>'
+    + '</div>'
+    + '<form class="form-card" id="orderForm" novalidate>'
+    +   '<h2>Your details</h2>'
+    +   ff('customer_name', 'Full name', 'autocomplete="name" maxlength="100" required')
+    +   ff('customer_phone', 'Phone number', 'type="tel" inputmode="numeric" autocomplete="tel-national" maxlength="11" required')
+    +   ff('customer_city', 'City', 'autocomplete="address-level2" maxlength="100" required')
+    +   '<h2 class="sub-head">Plot details <span class="muted" style="font-weight:400; font-size:13px">(optional)</span></h2>'
+    +   '<div class="ff-row">'
+    +     ff('plot_width', 'Width (ft)', 'type="number" min="1" max="1000" inputmode="numeric"', userPlot.width)
+    +     ff('plot_length', 'Length (ft)', 'type="number" min="1" max="1000" inputmode="numeric"', userPlot.length)
+    +     '<div class="ff always" id="f_facing"><select id="facing"><option value="">Not sure</option>'
+    +       facings.map(f => '<option' + (f === userPlot.facing ? ' selected' : '') + '>' + f + '</option>').join('')
+    +     '</select><label for="facing">Facing</label><div class="ff-error" id="e_facing"></div></div>'
+    +   '</div>'
+    +   '<p class="form-error" id="formError" role="alert"></p>'
+    +   '<button class="btn btn-primary btn-submit" type="submit" id="submitBtn"><span class="btn-label">'
+    +     (q.needsReview ? 'Submit for manual review' : 'Confirm &amp; Place Order') + '</span></button>'
+    +   '<p class="fine-print">The final price is always confirmed by our server when you submit.</p>'
+    + '</form>'
+    + '<div class="trust">'
+    +   '<span>' + icon('lock') + 'Secure &amp; encrypted</span>'
+    +   '<span>' + icon('clock') + '24-hour response</span>'
+    +   '<span>' + icon('shield') + '100% satisfaction guarantee</span>'
     + '</div>';
+
+  const toggle = document.getElementById('sumToggle');
+  toggle.addEventListener('click', () => {
+    const open = toggle.getAttribute('aria-expanded') !== 'true';
+    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    document.getElementById('sumBody').hidden = !open;
+  });
 
   const phone = document.getElementById('customer_phone');
   phone.addEventListener('input', () => {
-    phone.value = phone.value.replace(/\D/g, '').slice(0, 10);
-    validatePhone(phone.value.length === 10 || phone.dataset.touched === '1');
+    // Digits only, shown as XXXXX XXXXX; keep the caret where the user is typing.
+    const caretDigits = phone.value.slice(0, phone.selectionStart).replace(/\D/g, '').length;
+    const digits = phone.value.replace(/\D/g, '').slice(0, 10);
+    phone.value = digits.length > 5 ? digits.slice(0, 5) + ' ' + digits.slice(5) : digits;
+    const pos = Math.min(caretDigits, 10) + (caretDigits > 5 ? 1 : 0);
+    phone.setSelectionRange(pos, pos);
+    if(digits.length === 10) setState('customer_phone', 'valid');
+    else if(phone.dataset.touched) setState('customer_phone', 'invalid', 'Enter a valid 10-digit phone number.');
+    else setState('customer_phone', '');
   });
-  phone.addEventListener('blur', () => { phone.dataset.touched = '1'; validatePhone(true); });
-  ['customer_name', 'customer_city', 'plot_width', 'plot_length', 'facing'].forEach(id =>
-    document.getElementById(id).addEventListener('input', () => setError(id, '')));
+  phone.addEventListener('blur', () => { if(phone.value){ phone.dataset.touched = '1'; checkPhone(); } });
+  [['customer_name', 'Please enter your name.'], ['customer_city', 'Please enter your city.']].forEach(([id, msg]) => {
+    const el = document.getElementById(id);
+    el.addEventListener('input', () => { if(el.value.trim()) setState(id, 'valid'); });
+    el.addEventListener('blur', () => setState(id, el.value.trim() ? 'valid' : (el.dataset.touched ? 'invalid' : ''), msg));
+  });
+  ['plot_width', 'plot_length', 'facing'].forEach(id => document.getElementById(id).addEventListener('input', () => setState(id, '')));
   document.getElementById('orderForm').addEventListener('submit', submitOrder);
 }
 
-function setError(id, msg){
-  document.getElementById('e_' + id).textContent = msg;
-  document.getElementById('f_' + id).classList.toggle('has-error', !!msg);
+function setState(id, state, msg){
+  const f = document.getElementById('f_' + id);
+  f.classList.toggle('valid', state === 'valid');
+  f.classList.toggle('invalid', state === 'invalid');
+  document.getElementById('e_' + id).textContent = state === 'invalid' ? (msg || '') : '';
 }
 
-function validatePhone(show){
-  const ok = /^[0-9]{10}$/.test(document.getElementById('customer_phone').value);
-  setError('customer_phone', ok || !show ? '' : 'Enter a valid 10-digit phone number.');
+function phoneDigits(){ return document.getElementById('customer_phone').value.replace(/\D/g, ''); }
+
+function checkPhone(){
+  const ok = /^[0-9]{10}$/.test(phoneDigits());
+  setState('customer_phone', ok ? 'valid' : 'invalid', 'Enter a valid 10-digit phone number.');
   return ok;
 }
 
 function clientValidate(){
-  let ok = validatePhone(true);
+  let ok = true;
   [['customer_name', 'Please enter your name.'], ['customer_city', 'Please enter your city.']].forEach(([id, msg]) => {
-    if(!document.getElementById(id).value.trim()){ setError(id, msg); ok = false; }
+    const el = document.getElementById(id);
+    el.dataset.touched = '1';
+    if(el.value.trim()) setState(id, 'valid'); else { setState(id, 'invalid', msg); ok = false; }
   });
-  return ok;
+  document.getElementById('customer_phone').dataset.touched = '1';
+  return checkPhone() && ok;
+}
+
+function setLoading(on){
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = on;
+  btn.setAttribute('aria-busy', on ? 'true' : 'false');
+  const spinner = btn.querySelector('.spinner');
+  if(on && !spinner) btn.insertAdjacentHTML('afterbegin', '<span class="spinner" aria-hidden="true"></span>');
+  if(!on && spinner) spinner.remove();
+  btn.querySelector('.btn-label').textContent = on ? 'Placing order…' : (q.needsReview ? 'Submit for manual review' : 'Confirm & Place Order');
 }
 
 async function submitOrder(e){
   e.preventDefault();
   document.getElementById('formError').textContent = '';
-  if(!clientValidate()){ document.querySelector('.has-error input')?.focus(); return; }
-
-  const btn = document.getElementById('submitBtn');
-  btn.disabled = true;
-  const label = btn.innerHTML;
-  btn.textContent = 'Placing order…';
+  if(!clientValidate()){ document.querySelector('.ff.invalid input')?.focus(); return; }
+  setLoading(true);
 
   const val = id => document.getElementById(id).value.trim();
   // No price is sent: api/order.php works the total out from the database.
   const payload = {
     design_id: design.id,
     customer_name: val('customer_name'),
-    customer_phone: val('customer_phone'),
+    customer_phone: phoneDigits(),
     customer_city: val('customer_city'),
     plot_width: val('plot_width'), plot_length: val('plot_length'), facing: val('facing'),
     structural_addon: structAddon,
@@ -176,13 +210,12 @@ async function submitOrder(e){
     data = {error:'We couldn’t reach the server. Check your connection and try again.'};
   }
   if(!res.ok){
-    btn.disabled = false;
-    btn.innerHTML = label;
+    setLoading(false);
     if(data.errors){
-      Object.entries(data.errors).forEach(([id, msg]) => { if(document.getElementById('e_' + id)) setError(id, msg); });
+      Object.entries(data.errors).forEach(([id, msg]) => { if(document.getElementById('f_' + id)) setState(id, 'invalid', msg); });
     }
     if(!data.errors || data.errors.modifications) document.getElementById('formError').textContent = data.error || 'Something went wrong. Please try again.';
-    document.querySelector('.has-error input, .has-error select')?.focus();
+    document.querySelector('.ff.invalid input, .ff.invalid select')?.focus();
     return;
   }
   showSuccess(data);
@@ -191,21 +224,38 @@ async function submitOrder(e){
 function showSuccess(data){
   const range = data.total_price_max && data.total_price_max !== data.total_price;
   document.getElementById('app').innerHTML =
-    '<div class="success-card">'
-    + '<div class="tick">✓</div>'
+    '<div class="success" role="status">'
+    + '<div class="confetti" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>'
+    + '<svg class="check-anim" viewBox="0 0 80 80" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+    +   '<circle cx="40" cy="40" r="36" transform="rotate(-90 40 40)"/><path d="M25 41l10 10 20-22"/></svg>'
     + '<h1>' + (data.needs_manual_review ? 'Request received' : 'Order placed') + '</h1>'
-    + '<p class="muted" style="margin:6px 0 0">Your order code</p>'
-    + '<div class="order-code">' + esc(data.order_code) + '</div>'
-    + '<p class="muted" style="font-size:13px; margin:0 0 18px">Save this code — you’ll need it with your phone number to track your order.</p>'
-    + '<div class="section-title" style="margin:0">' + esc(data.design_name) + '</div>'
-    + '<div class="sum-total" style="max-width:340px; margin:10px auto 0; text-align:left"><span>' + (range ? 'Estimated' : 'Total') + '</span><span class="price">'
+    + '<p class="lead">' + esc(data.design_name) + '</p>'
+    + '<div class="code-box"><code id="orderCode">' + esc(data.order_code) + '</code>'
+    +   '<button type="button" class="copy-btn" id="copyBtn">' + icon('copy') + '<span>Copy</span></button></div>'
+    + '<p class="small">Save this code — you’ll need it with your phone number to track your order.</p>'
+    + '<div class="success-total"><div class="sum-total"><span>' + (range ? 'Estimated' : 'Total') + '</span><span class="price' + (range ? ' range' : '') + '">'
     +   (range ? fmt(data.total_price) + ' – ' + fmt(data.total_price_max) : fmt(data.total_price)) + '</span></div>'
-    + (data.estimated_delivery_days ? '<div class="sum-days">Estimated delivery: <strong>' + data.estimated_delivery_days + ' days</strong></div>' : '')
-    + '<p style="margin-top:20px">Our team will contact you within 24 hours'
-    +   (data.needs_manual_review ? ' to confirm the exact price.' : '.') + '</p>'
-    + '<div class="cta-row"><a class="btn btn-primary" href="track.php?code=' + encodeURIComponent(data.order_code) + '">Track this order</a><a class="btn" href="index.php">Browse more designs</a></div>'
+    +   (data.estimated_delivery_days ? '<div class="sum-days">Estimated delivery: ' + data.estimated_delivery_days + ' days</div>' : '') + '</div>'
+    + '<p style="margin:20px 0 0">Our team will contact you within 24 hours' + (data.needs_manual_review ? ' to confirm the exact price.' : '.') + '</p>'
+    + '<div class="cta-row"><a class="btn btn-primary lift" href="track.php?code=' + encodeURIComponent(data.order_code) + '">Track your order</a><a class="btn" href="index.php">Browse more designs</a></div>'
     + '</div>';
   window.scrollTo(0, 0);
+
+  document.getElementById('copyBtn').addEventListener('click', async () => {
+    const label = document.querySelector('#copyBtn span');
+    try {
+      await navigator.clipboard.writeText(data.order_code);
+    } catch(err) {
+      // Older browsers / non-HTTPS: select the code so the customer can copy it.
+      const range = document.createRange();
+      range.selectNodeContents(document.getElementById('orderCode'));
+      const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
+      label.textContent = 'Press Ctrl+C';
+      return;
+    }
+    label.textContent = 'Copied!';
+    setTimeout(() => { label.textContent = 'Copy'; }, 1800);
+  });
 }
 
 load();

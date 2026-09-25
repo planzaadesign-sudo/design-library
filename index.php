@@ -7,48 +7,67 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/style.css?v=20260925b">
+<link rel="stylesheet" href="assets/style.css?v=20260925c">
 </head>
-<body>
-<div class="topbar"><div class="topbar-inner topnav">
-  <div class="wordmark"><a href="index.php">planzaa<span>.</span> design library</a></div>
-  <nav class="navlinks"><a href="index.php" class="active">Designs</a><a href="track.php">Track order</a></nav>
-</div></div>
-<div class="wrap">
-  <h1>Sample design library</h1>
-  <p class="section-gap">Tell us your plot and we'll flag which designs fit exactly, and which would need a modification.</p>
-  <div class="plotbar">
-    <div class="plot-title">Your plot</div>
-    <div class="field"><label for="pWidth">Plot width (ft)</label><input type="number" id="pWidth" min="1"></div>
-    <div class="field"><label for="pLength">Plot length (ft)</label><input type="number" id="pLength" min="1"></div>
-    <div class="field"><label for="pFacing">Facing</label>
-      <select id="pFacing">
-        <option value="">Select</option>
-        <option>East</option><option>West</option><option>North</option><option>South</option>
-      </select>
-    </div>
-  </div>
-  <div class="filterbar">
-    <div class="field"><label for="fBhk">Bedrooms</label>
-      <select id="fBhk"><option value="">All</option><option value="2">2 BHK</option><option value="3">3 BHK</option><option value="4">4 BHK</option></select>
-    </div>
-    <div class="field"><label for="fFloors">Floors</label>
-      <select id="fFloors"><option value="">All</option><option>G</option><option>G+1</option><option>G+2</option></select>
-    </div>
-    <div class="spacer"></div>
-    <div class="field"><label for="fSort">Sort by</label>
-      <select id="fSort"><option value="">Featured</option><option value="price-asc">Price: low to high</option><option value="price-desc">Price: high to low</option><option value="delivery">Delivery: fastest</option></select>
-    </div>
-  </div>
-  <div class="results-meta" id="resultsMeta"></div>
-  <div class="grid" id="grid"><p>Loading designs...</p></div>
-</div>
+<body class="site">
+<?php include __DIR__ . '/partials/nav.php'; ?>
+<main class="wrap page-enter">
+  <section class="hero">
+    <div class="eyebrow">Planzaa design library</div>
+    <h1>Ready-made house designs, checked against your plot</h1>
+    <p>Tell us your plot and we'll flag which designs fit exactly, and which would need a modification.</p>
+  </section>
 
-<script src="assets/app.js?v=20260925b"></script>
+  <section class="plot-card" aria-labelledby="plotHeading">
+    <h2 id="plotHeading"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17L17 3l4 4L7 21z"/><path d="M7 13l2 2M10 10l2 2M13 7l2 2"/></svg>Enter your plot details</h2>
+    <div class="plot-fields">
+      <div class="field"><label for="pWidth">Plot width (ft)</label><input type="number" id="pWidth" min="1" inputmode="numeric" placeholder="e.g. 30"></div>
+      <div class="field"><label for="pLength">Plot length (ft)</label><input type="number" id="pLength" min="1" inputmode="numeric" placeholder="e.g. 40"></div>
+      <div class="field"><label for="pFacing">Facing</label>
+        <select id="pFacing">
+          <option value="">Select</option>
+          <option>East</option><option>West</option><option>North</option><option>South</option>
+        </select>
+      </div>
+    </div>
+  </section>
+
+  <section class="filters" aria-label="Filter designs">
+    <div class="filter-row"><span class="filter-label" id="lblBhk">BHK</span>
+      <div class="pills" role="group" aria-labelledby="lblBhk" data-group="bhk">
+        <button type="button" class="pill active" data-value="">All</button><button type="button" class="pill" data-value="2">2 BHK</button><button type="button" class="pill" data-value="3">3 BHK</button><button type="button" class="pill" data-value="4">4 BHK</button>
+      </div>
+    </div>
+    <div class="filter-row"><span class="filter-label" id="lblFloors">Floors</span>
+      <div class="pills" role="group" aria-labelledby="lblFloors" data-group="floors">
+        <button type="button" class="pill active" data-value="">All</button><button type="button" class="pill" data-value="G">Ground</button><button type="button" class="pill" data-value="G+1">G+1</button><button type="button" class="pill" data-value="G+2">G+2</button>
+      </div>
+    </div>
+    <div class="filter-row"><span class="filter-label" id="lblFacing">Facing</span>
+      <div class="pills" role="group" aria-labelledby="lblFacing" data-group="facing">
+        <button type="button" class="pill active" data-value="">All</button><button type="button" class="pill" data-value="East">East</button><button type="button" class="pill" data-value="West">West</button><button type="button" class="pill" data-value="North">North</button><button type="button" class="pill" data-value="South">South</button>
+      </div>
+    </div>
+  </section>
+
+  <div class="results-bar">
+    <span id="resultsMeta" aria-live="polite">Loading designs&#8230;</span>
+    <button type="button" class="clear-all" id="clearAll">Clear all</button>
+  </div>
+  <div class="dgrid enter" id="grid">
+    <div class="skeleton" style="--i:0"><div class="sk sk-art"></div><div class="sk sk-line"></div><div class="sk sk-line short"></div></div>
+    <div class="skeleton" style="--i:1"><div class="sk sk-art"></div><div class="sk sk-line"></div><div class="sk sk-line short"></div></div>
+    <div class="skeleton" style="--i:2"><div class="sk sk-art"></div><div class="sk sk-line"></div><div class="sk sk-line short"></div></div>
+  </div>
+</main>
+<?php include __DIR__ . '/partials/footer.php'; ?>
 <script>
 const $ = id => document.getElementById(id);
 let designs = [];
 let loadSeq = 0;
+let firstRender = true;
+const filters = {bhk:'', floors:'', facing:''};
+const lastMatch = {}; // design id -> last badge state, so only changed badges animate
 
 // Restore the plot when coming back from a design page.
 const initial = new URLSearchParams(window.location.search);
@@ -65,44 +84,67 @@ async function loadDesigns(){
   if(seq !== loadSeq) return; // a newer request has already been sent
   designs = data.map(normDesign);
   history.replaceState(null, '', plotQuery(plot()) ? '?' + plotQuery(plot()) : 'index.php');
-  render();
+  render(firstRender);
+  firstRender = false;
 }
 
-function render(){
-  const bhk = $('fBhk').value, floors = $('fFloors').value, sort = $('fSort').value;
-  let list = designs.filter(d => (!bhk || d.bhk === Number(bhk)) && (!floors || d.floors === floors));
-  if(sort === 'price-asc') list.sort((a, b) => a.base_price - b.base_price);
-  if(sort === 'price-desc') list.sort((a, b) => b.base_price - a.base_price);
-  if(sort === 'delivery') list.sort((a, b) => a.delivery_days - b.delivery_days);
+function render(animate){
+  let list = designs.filter(d =>
+    (!filters.bhk || d.bhk === Number(filters.bhk)) &&
+    (!filters.floors || d.floors === filters.floors) &&
+    (!filters.facing || d.facing === filters.facing));
 
+  const active = filters.bhk || filters.floors || filters.facing;
+  $('clearAll').classList.toggle('show', !!active);
   const matches = list.filter(d => d.match === true).length;
-  $('resultsMeta').textContent = list.length + ' design' + (list.length === 1 ? '' : 's')
-    + (list.length && list[0].match !== null ? ' · ' + matches + ' exact match' + (matches === 1 ? '' : 'es') + ' for your plot' : '');
+  $('resultsMeta').innerHTML = 'Showing <strong>' + list.length + '</strong> of ' + designs.length + ' designs'
+    + (designs.length && designs[0].match !== null ? ' · ' + matches + ' exact match' + (matches === 1 ? '' : 'es') : '');
 
+  const grid = $('grid');
+  grid.classList.toggle('enter', !!animate);
   if(!list.length){
-    $('grid').innerHTML = '<div class="empty-state">No designs match these filters. Try widening the bedroom or floor filter.</div>';
+    grid.innerHTML = '<div class="empty-state"><strong>No designs match these filters.</strong><br>Try a different combination, or <button type="button" class="clear-all show" onclick="clearFilters()">clear all filters</button>.</div>';
     return;
   }
   const q = plotQuery(plot());
-  $('grid').innerHTML = list.map(d => {
-    const badge = d.match === null ? '<span class="badge badge-neutral">Enter your plot to check fit</span>'
-      : d.match ? '<span class="badge badge-match">Exact match</span>'
-      : '<span class="badge badge-amber">Needs modification</span>';
-    return '<a class="card" href="design.php?id=' + d.id + (q ? '&' + q : '') + '">'
-      + '<div class="card-art">' + d.floor_plan_svg + '</div>'
-      + '<div class="card-body">'
-      + '<div class="card-name">' + esc(d.name) + '</div>'
-      + '<div class="meta-row"><span>' + d.plot_width + '×' + d.plot_length + ' ft</span><span>' + esc(d.facing) + ' facing</span><span>' + esc(d.floors) + '</span><span>' + d.bhk + ' BHK</span></div>'
-      + badge
-      + '<div class="price-row"><span class="price">' + fmt(d.base_price) + '</span><span class="delivery">' + d.delivery_days + '-day delivery</span></div>'
-      + '</div></a>';
+  grid.innerHTML = list.map((d, i) => {
+    const changed = d.match !== null && lastMatch[d.id] !== d.match;
+    lastMatch[d.id] = d.match;
+    return designCard(d, q, i, changed && !animate);
   }).join('');
 }
+
+document.querySelectorAll('.pills').forEach(group => {
+  group.querySelectorAll('.pill').forEach(p => p.setAttribute('aria-pressed', p.classList.contains('active') ? 'true' : 'false'));
+  group.addEventListener('click', e => {
+    const pill = e.target.closest('.pill');
+    if(!pill) return;
+    filters[group.dataset.group] = pill.dataset.value;
+    syncPills();
+    render(true);
+  });
+});
+
+function syncPills(){
+  document.querySelectorAll('.pills').forEach(group => {
+    group.querySelectorAll('.pill').forEach(p => {
+      const on = p.dataset.value === filters[group.dataset.group];
+      p.classList.toggle('active', on);
+      p.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+  });
+}
+
+function clearFilters(){
+  filters.bhk = filters.floors = filters.facing = '';
+  syncPills();
+  render(true);
+}
+$('clearAll').addEventListener('click', clearFilters);
 
 let debounce;
 ['pWidth', 'pLength'].forEach(id => $(id).addEventListener('input', () => { clearTimeout(debounce); debounce = setTimeout(loadDesigns, 250); }));
 $('pFacing').addEventListener('change', loadDesigns);
-['fBhk', 'fFloors', 'fSort'].forEach(id => $(id).addEventListener('change', render));
 loadDesigns();
 </script>
 </body>

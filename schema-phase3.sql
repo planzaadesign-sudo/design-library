@@ -3,7 +3,8 @@
 -- DATABASE THAT ALREADY RAN PHASE 3: do NOT import the whole file again (the INSERTs
 -- would add duplicate rows and the ALTERs would fail). Instead run, in order:
 --   1. the "Simpler customer wording" UPDATE block (safe to repeat), then
---   2. the "Phase 3b" section at the bottom, once.
+--   2. the "Phase 3b" section, once (skip if already done), then
+--   3. the "Phase 3c" section at the very bottom, once.
 
 -- Menu of modifications a customer can order on top of a library design.
 -- Tiers 1-3 have a fixed price; struct_portion is the part of that price that
@@ -194,3 +195,16 @@ CREATE TABLE IF NOT EXISTS order_modification_details (
   FOREIGN KEY (modification_id) REFERENCES modifications(id),
   FOREIGN KEY (room_id) REFERENCES design_rooms(id)
 );
+
+-- ===========================================================================
+-- Phase 3c: "call me" requests.
+-- DATABASE THAT ALREADY RAN PHASE 3b: run everything from this line down, once.
+-- ===========================================================================
+
+-- A customer can ask our design expert to call instead of picking changes.
+-- These orders have contact_preference = 'call', needs_manual_review = 1,
+-- no modifications, and total_price = the design's base price until the call.
+ALTER TABLE library_orders ADD COLUMN customer_state VARCHAR(50) NULL;
+ALTER TABLE library_orders ADD COLUMN customer_district VARCHAR(100) NULL;
+ALTER TABLE library_orders ADD COLUMN contact_preference ENUM('call','self') DEFAULT 'self';
+ALTER TABLE library_orders ADD COLUMN callback_notes TEXT NULL;

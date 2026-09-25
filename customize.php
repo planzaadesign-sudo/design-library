@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/style.css?v=20260925e">
+<link rel="stylesheet" href="assets/style.css?v=20260925f">
 </head>
 <body class="site">
 <?php include __DIR__ . '/partials/nav.php'; ?>
@@ -30,6 +30,9 @@ const selected = new Set((params.get('mods') || '').split(',').map(Number).filte
 // Per-change choices: {modId: {rooms:{roomId:{act, note, to, on}}, scheme, custom, text}}
 let details = {};
 let step = selected.size ? 2 : 1;
+// Which screen shows first: the two-way choice, the "call me" form, or the editor.
+// Coming back from the order page (changes already picked) goes straight to the editor.
+let view = selected.size || params.get('path') === 'self' ? 'editor' : params.get('path') === 'call' ? 'call' : 'choice';
 let lastTotal = null;
 const shown = {warn:false, review:false}; // notes already on screen don't replay their entrance
 
@@ -56,6 +59,136 @@ async function load(){
   renderShell();
   selected.forEach(id => openPanel(id));
   update();
+  showView(view, true);
+}
+
+// ---- Screens: choice / call request / editor ----------------------------------
+
+function showView(v, first){
+  view = v;
+  ['choice', 'call', 'editor'].forEach(name => {
+    const el = document.getElementById(name + 'View');
+    el.hidden = name !== v;
+    if(name === v && !first){ el.classList.remove('page-enter'); void el.offsetWidth; el.classList.add('page-enter'); }
+  });
+  const url = new URL(window.location.href);
+  if(v === 'choice') url.searchParams.delete('path'); else url.searchParams.set('path', v === 'editor' ? 'self' : 'call');
+  history.replaceState(null, '', url);
+  if(!first) window.scrollTo(0, 0);
+  if(v === 'call' && !first) document.getElementById('cb_name')?.focus({preventScroll:true});
+}
+
+function choiceHtml(){
+  return '<section id="choiceView" class="page-enter" hidden>'
+    + '<h2 class="path-heading">How would you like to tell us about your changes?</h2>'
+    + '<div class="path-grid">'
+    +   '<button type="button" class="path-card path-call" data-path="call">'
+    +     '<span class="path-badge">Most customers choose this</span>'
+    +     '<span class="path-icon">' + icon('phone', 'ic-lg') + '</span>'
+    +     '<span class="path-title">I\u2019ll describe my changes on a call</span>'
+    +     '<span class="path-sub">Our design expert will call you, understand exactly what you want, and handle everything for you. No forms to fill.</span>'
+    +     '<span class="path-go">Request a call <span class="arrow" aria-hidden="true">\u2192</span></span>'
+    +   '</button>'
+    +   '<button type="button" class="path-card path-self" data-path="editor">'
+    +     '<span class="path-icon">' + icon('checklist', 'ic-lg') + '</span>'
+    +     '<span class="path-title">I\u2019ll select my changes myself</span>'
+    +     '<span class="path-sub">Pick exactly what you want to change, room by room. You\u2019ll see the price update as you go.</span>'
+    +     '<span class="path-go">Start picking <span class="arrow" aria-hidden="true">\u2192</span></span>'
+    +   '</button>'
+    + '</div></section>';
+}
+
+// Floating-label field, same look as the order form.
+function ff(id, label, attrs){
+  return '<div class="ff" id="f_' + id + '"><input id="' + id + '" placeholder=" " ' + attrs + '>'
+    + '<label for="' + id + '">' + label + '</label><div class="ff-error" id="e_' + id + '" aria-live="polite"></div></div>';
+}
+
+function callHtml(){
+  return '<section id="callView" class="page-enter" hidden><div class="call-wrap" id="callWrap">'
+    + '<button type="button" class="back-opt" data-path="choice">\u2190 Back to options</button>'
+    + '<form class="form-card" id="callForm" novalidate>'
+    +   '<div class="call-head"><span class="ic-wrap">' + icon('phone', 'ic-lg') + '</span>'
+    +   '<div><h2>Request a call</h2><p>Our design expert will call you about <strong>' + esc(design.name) + '</strong>.</p></div></div>'
+    +   ff('cb_name', 'Your name', 'autocomplete="name" maxlength="100"')
+    +   ff('cb_phone', 'Your mobile number', 'type="tel" inputmode="numeric" autocomplete="tel-national" maxlength="11"')
+    +   '<div class="ff always" id="f_cb_state"><select id="cb_state" autocomplete="address-level1"><option value="">Choose your state</option>'
+    +     INDIAN_STATES.map(s => '<option>' + s + '</option>').join('') + '</select><label for="cb_state">Your state</label><div class="ff-error" id="e_cb_state"></div></div>'
+    +   ff('cb_district', 'Your district or city', 'autocomplete="address-level2" maxlength="100"')
+    +   '<div class="ff-area"><label for="cb_notes">Any quick notes? <span>(optional)</span></label>'
+    +   '<textarea id="cb_notes" rows="3" maxlength="1000" placeholder="For example: I want to add one more bedroom, or I want a bigger kitchen"></textarea></div>'
+    +   '<p class="form-error" id="cbError" role="alert"></p>'
+    +   '<button class="btn btn-primary btn-submit" type="submit" id="cbBtn"><span class="btn-label">Request a call</span></button>'
+    +   '<p class="fine-print">We will call you. You don\u2019t pay anything now.</p>'
+    + '</form></div></section>';
+}
+
+const CB_FIELDS = {customer_name:'cb_name', customer_phone:'cb_phone', customer_state:'cb_state', customer_district:'cb_district'};
+
+function cbError(id, msg){
+  document.getElementById('f_' + id).classList.toggle('invalid', !!msg);
+  document.getElementById('e_' + id).textContent = msg || '';
+}
+
+function bindCallForm(){
+  const phone = document.getElementById('cb_phone');
+  phone.addEventListener('input', () => {
+    const digits = phone.value.replace(/\D/g, '').slice(0, 10);
+    phone.value = digits.length > 5 ? digits.slice(0, 5) + ' ' + digits.slice(5) : digits;
+    cbError('cb_phone', '');
+  });
+  ['cb_name', 'cb_district'].forEach(id => document.getElementById(id).addEventListener('input', () => cbError(id, '')));
+  document.getElementById('cb_state').addEventListener('change', () => cbError('cb_state', ''));
+  document.getElementById('callForm').addEventListener('submit', submitCall);
+}
+
+async function submitCall(e){
+  e.preventDefault();
+  const val = id => document.getElementById(id).value.trim();
+  const digits = val('cb_phone').replace(/\D/g, '');
+  document.getElementById('cbError').textContent = '';
+  let ok = true;
+  if(!val('cb_name')){ cbError('cb_name', 'Please type your name.'); ok = false; }
+  if(!/^[0-9]{10}$/.test(digits)){ cbError('cb_phone', 'Please type your 10-digit mobile number.'); ok = false; }
+  if(!val('cb_state')){ cbError('cb_state', 'Please choose your state.'); ok = false; }
+  if(!val('cb_district')){ cbError('cb_district', 'Please type your district or city.'); ok = false; }
+  if(!ok){ document.querySelector('#callForm .ff.invalid input, #callForm .ff.invalid select')?.focus(); return; }
+
+  const btn = document.getElementById('cbBtn');
+  btn.disabled = true;
+  btn.insertAdjacentHTML('afterbegin', '<span class="spinner" aria-hidden="true"></span>');
+  btn.querySelector('.btn-label').textContent = 'Sending\u2026';
+  let res, data = {};
+  try {
+    res = await fetch('api/order.php', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({
+      design_id:design.id, contact_preference:'call',
+      customer_name:val('cb_name'), customer_phone:digits, customer_state:val('cb_state'), customer_district:val('cb_district'),
+      callback_notes:val('cb_notes'), plot_width:userPlot.width, plot_length:userPlot.length, facing:userPlot.facing,
+    })});
+    data = await res.json();
+  } catch(err) {
+    res = {ok:false};
+    data = {error:'We could not connect. Please check your internet and try again.'};
+  }
+  if(!res.ok){
+    btn.disabled = false;
+    btn.querySelector('.spinner')?.remove();
+    btn.querySelector('.btn-label').textContent = 'Request a call';
+    const shown = data.errors ? Object.entries(data.errors).filter(([k, msg]) => CB_FIELDS[k] && (cbError(CB_FIELDS[k], msg), true)).length : 0;
+    if(!shown) document.getElementById('cbError').textContent = data.error || 'Something went wrong. Please try again.';
+    return;
+  }
+  const pretty = digits.slice(0, 5) + ' ' + digits.slice(5);
+  document.getElementById('callWrap').innerHTML =
+    '<div class="success call-success" role="status">'
+    + '<div class="call-success-ic"><span class="ic-wrap">' + icon('phone', 'ic-lg') + '</span>'
+    +   '<svg class="check-anim" viewBox="0 0 80 80" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="40" cy="40" r="36" transform="rotate(-90 40 40)"/><path d="M25 41l10 10 20-22"/></svg></div>'
+    + '<h1>Done!</h1>'
+    + '<p class="lead">Our design expert will call you within 24 hours on <strong>' + esc(pretty) + '</strong>. They\u2019ll understand your needs and guide you through everything.</p>'
+    + '<p class="small">Your request number is <strong>' + esc(data.order_code) + '</strong>. You can use it to <a href="track.php?code=' + encodeURIComponent(data.order_code) + '">check your request</a>.</p>'
+    + '<div class="cta-row"><a class="btn" href="index.php">See more designs</a></div>'
+    + '</div>';
+  window.scrollTo(0, 0);
 }
 
 function choiceCard(value, title, desc, badge){
@@ -94,6 +227,10 @@ function renderShell(){
     +   '<div><div class="eyebrow">Change this design</div><h1>' + esc(design.name) + '</h1>'
     +   '<div class="meta">' + design.plot_width + '×' + design.plot_length + ' ft plot · ' + esc(design.facing) + ' facing · ' + esc(floorsLabel(design.floors)) + ' · ' + design.bhk + ' BHK · Design price ' + fmt(design.base_price) + '</div></div>'
     + '</div>'
+    + choiceHtml()
+    + callHtml()
+    + '<div id="editorView" class="page-enter" hidden>'
+    + '<button type="button" class="back-opt" data-path="choice">\u2190 Back to options <span>(you can also ask us to call you)</span></button>'
     + '<div class="steps-bar">'
     +   '<div class="steps-text" id="stepsText" aria-live="polite"></div>'
     +   '<div class="steps-track"><button type="button" class="steps-seg on" data-goto="step1" aria-label="Go to step 1"><i></i></button><button type="button" class="steps-seg" data-goto="step2" aria-label="Go to step 2"><i></i></button></div>'
@@ -112,7 +249,11 @@ function renderShell(){
     +       '<span><strong>Not sure what to pick?</strong>Call us on <a href="' + CONTACT.tel + '">' + CONTACT.phone + '</a> or <a href="' + CONTACT.whatsapp + '" target="_blank" rel="noopener">message us on WhatsApp</a>.</span></div>'
     +   '</div>'
     +   '<aside class="summary" id="summary" aria-live="polite"></aside>'
+    + '</div>'
     + '</div>';
+
+  document.querySelectorAll('[data-path]').forEach(b => b.addEventListener('click', () => showView(b.dataset.path)));
+  bindCallForm();
 
   document.querySelectorAll('.choice-card').forEach(btn => btn.addEventListener('click', () => {
     structural = btn.dataset.structural === '1';
@@ -137,6 +278,7 @@ function renderShell(){
     document.getElementById(seg.dataset.goto).scrollIntoView({behavior:'smooth', block:'start'})));
   // Reaching the modification list also counts as moving on to step 2.
   window.addEventListener('scroll', () => {
+    if(view !== 'editor') return;
     const top = document.getElementById('step2').getBoundingClientRect().top;
     if(top < window.innerHeight * 0.45) setStep(2);
   }, {passive:true});
@@ -161,7 +303,7 @@ function setStep(n){
 // ---- Room pickers -------------------------------------------------------------
 
 function stateFor(id){
-  if(!details[id]) details[id] = {rooms:{}, scheme:'', custom:'', text:''};
+  if(!details[id]) details[id] = {rooms:{}, scheme:'', custom:'', text:'', architect:false};
   return details[id];
 }
 
@@ -194,7 +336,24 @@ function roomsByFloor(filter, rowHtml){
   }).join('');
 }
 
+// Top option in every room picker (and the colour picker): skip the details, our architect chooses.
+function archRow(title, sub){
+  return '<button type="button" class="arch-row" data-arch aria-pressed="false">'
+    + '<span class="arch-ic">' + icon('expert') + '</span>'
+    + '<span class="arch-text"><strong>' + title + '</strong><small>' + sub + '</small></span>'
+    + '<span class="arch-check" aria-hidden="true">' + icon('check') + '</span></button>';
+}
+
 function panelHtml(m){
+  return (ROOM_KINDS.includes(m.detail_type)
+      ? archRow('Not sure? Let our architect decide', 'Our architect will choose the best option for this. You pay <span data-unit-for="' + m.id + '"></span>, the price for one room.')
+      : m.detail_type === 'colour'
+        ? archRow('Not sure about colours? Our architect will suggest the best options for your house style', 'No need to pick below.')
+        : '')
+    + panelBody(m);
+}
+
+function panelBody(m){
   const kind = m.detail_type;
   const per = '<span data-unit-for="' + m.id + '"></span>';
   if(ROOM_KINDS.includes(kind) && !roomList.length){
@@ -238,7 +397,7 @@ function panelHtml(m){
   }
   if(kind === 'other'){
     return '<label class="detail-label" for="other' + m.id + '">Tell us what else you’d like to change — we’ll review and let you know the cost</label>'
-      + '<textarea id="other' + m.id + '" data-text rows="4" maxlength="1000" placeholder="For example: I want a bigger window in the living room and a shoe rack near the door"></textarea>';
+      + '<textarea id="other' + m.id + '" data-text rows="4" maxlength="1000" placeholder="You can type your changes here, or just write \u2018call me to discuss\u2019 and we\u2019ll call you"></textarea>';
   }
   return '';
 }
@@ -248,6 +407,9 @@ function syncPanel(id){
   const panel = document.querySelector('[data-detail-for="' + id + '"]');
   if(!panel || !panel.innerHTML) return;
   const st = stateFor(id);
+  panel.classList.toggle('arch-on', !!st.architect);
+  const arch = panel.querySelector('[data-arch]');
+  if(arch){ arch.classList.toggle('on', !!st.architect); arch.setAttribute('aria-pressed', st.architect ? 'true' : 'false'); }
   panel.querySelectorAll('.room-row').forEach(row => {
     const s = st.rooms[row.dataset.room] || {};
     row.querySelectorAll('[data-act]').forEach(b => {
@@ -293,12 +455,16 @@ function panelOf(el){
 }
 
 function onDetailClick(e){
-  const btn = e.target.closest('[data-act], [data-scheme]');
+  const btn = e.target.closest('[data-act], [data-scheme], [data-arch]');
   if(!btn) return;
   const id = panelOf(btn);
   if(id === null) return;
   const st = stateFor(id);
-  if(btn.dataset.scheme !== undefined){
+  // Picking anything yourself switches "architect decides" off again.
+  st.architect = btn.matches('[data-arch]') ? !st.architect : false;
+  if(btn.matches('[data-arch]')){
+    // nothing else to change
+  } else if(btn.dataset.scheme !== undefined){
     st.scheme = st.scheme === btn.dataset.scheme ? '' : btn.dataset.scheme;
   } else {
     const rid = btn.closest('.room-row').dataset.room;
@@ -320,6 +486,7 @@ function onDetailInput(e){
   const id = panelOf(el);
   if(id === null) return;
   const st = stateFor(id);
+  if(st.architect){ st.architect = false; syncPanel(id); }
   const row = el.closest('.room-row');
   if(row){
     const s = st.rooms[row.dataset.room] = st.rooms[row.dataset.room] || {};
@@ -339,6 +506,8 @@ function entriesFor(m){
   const st = stateFor(m.id);
   const kind = m.detail_type;
   const entry = (room, action, note, text, incomplete) => ({modification_id:m.id, room_id:room ? room.id : null, action, custom_note:note || null, text, incomplete:!!incomplete});
+  if(st.architect && ROOM_KINDS.includes(kind)) return [entry(null, 'other', ARCHITECT_NOTE, 'Our architect will decide')];
+  if(st.architect && kind === 'colour') return [entry(null, null, COLOUR_ARCHITECT_NOTE, 'Our architect will suggest colours')];
   if(ROOM_KINDS.includes(kind) && !roomList.length){
     const t = (st.text || '').trim();
     return t ? [entry(null, 'other', t, t)] : [];
@@ -392,8 +561,7 @@ function update(){
   document.querySelectorAll('.mod-row').forEach(row => row.classList.toggle('checked', selected.has(Number(row.dataset.id))));
   Object.values(modsById).forEach(m => {
     document.querySelector('[data-price-for="' + m.id + '"]').textContent = modPriceLabel(m, structural);
-    const unit = document.querySelector('[data-unit-for="' + m.id + '"]');
-    if(unit) unit.textContent = fmt(effectiveModPrice(m, structural));
+    document.querySelectorAll('[data-unit-for="' + m.id + '"]').forEach(unit => { unit.textContent = fmt(effectiveModPrice(m, structural)); });
   });
   groups.forEach(g => {
     const n = g.items.filter(m => selected.has(m.id)).length;

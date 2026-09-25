@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/style.css?v=20260925e">
+<link rel="stylesheet" href="assets/style.css?v=20260925f">
 </head>
 <body class="site">
 <?php include __DIR__ . '/partials/nav.php'; ?>
@@ -82,21 +82,24 @@ function renderOrder(o){
     return '<li class="tstep ' + state + '"' + (state === 'current' ? ' aria-current="step"' : '') + '>'
       + '<span class="node">' + (state === 'done' ? icon('check') : '') + '</span><span>' + s[1] + '</span></li>';
   }).join('');
-  const mods = o.modifications.length
-    ? '<ul>' + o.modifications.map(l => '<li>' + esc(l) + '</li>').join('') + '</ul>'
+  const mods = o.callback ? 'We will talk about them on the call'
+    : o.modifications.length ? '<ul>' + o.modifications.map(l => '<li>' + esc(l) + '</li>').join('') + '</ul>'
     : 'No changes — bought as it is';
+  const reviewNote = o.callback
+    ? 'Our design expert will call you to understand your changes. After the call, we will tell you the price.'
+    : 'Your changes are big, so our team is checking them. We will call you with the exact price.';
 
   $('result').innerHTML =
     '<div class="status-card">'
     + '<div class="status-head"><div><div class="eyebrow">' + esc(o.order_code) + '</div><h2>' + esc(o.design_name) + '</h2></div>'
     +   '<span class="badge ' + (delivered ? 'badge-match' : 'b-blue') + '">' + esc(STAGES[idx] ? STAGES[idx][1] : o.status) + '</span></div>'
     + '<ol class="tstepper" aria-label="Order progress">' + steps + '</ol>'
-    + (o.needs_manual_review ? '<div class="note note-danger">' + icon('info') + '<span>Your changes are big, so our team is checking them. We will call you with the exact price.</span></div>' : '')
+    + (o.needs_manual_review ? '<div class="note note-danger">' + icon('info') + '<span>' + reviewNote + '</span></div>' : '')
     + '<dl class="details">'
     +   '<div class="drow"><dt>Design</dt><dd>' + esc(o.design_name) + '</dd></div>'
     +   '<div class="drow"><dt>Ordered on</dt><dd>' + dateLabel + '</dd></div>'
-    +   '<div class="drow"><dt>' + (o.needs_manual_review ? 'Price starts from' : 'Total price') + '</dt><dd>' + fmt(o.total_price) + '</dd></div>'
-    +   '<div class="drow"><dt>' + STRUCT_NAME + '</dt><dd>' + (o.structural ? 'Included' : 'Not included') + '</dd></div>'
+    +   '<div class="drow"><dt>' + (o.callback ? 'Design price' : o.needs_manual_review ? 'Price starts from' : 'Total price') + '</dt><dd>' + fmt(o.total_price) + '</dd></div>'
+    +   (o.callback ? '' : '<div class="drow"><dt>' + STRUCT_NAME + '</dt><dd>' + (o.structural ? 'Included' : 'Not included') + '</dd></div>')
     +   '<div class="drow"><dt>Your changes</dt><dd>' + mods + '</dd></div>'
     +   (o.estimated_delivery_days ? '<div class="drow"><dt>Ready in about</dt><dd>' + o.estimated_delivery_days + ' days</dd></div>' : '')
     + '</dl>'

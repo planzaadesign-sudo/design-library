@@ -16,6 +16,15 @@ if (!is_array($input)) {
 }
 
 $FACINGS = ['East', 'West', 'North', 'South'];
+$STATES = [
+    'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh', 'Goa', 'Gujarat', 'Haryana',
+    'Himachal Pradesh', 'Jharkhand', 'Karnataka', 'Kerala', 'Madhya Pradesh', 'Maharashtra', 'Manipur',
+    'Meghalaya', 'Mizoram', 'Nagaland', 'Odisha', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu', 'Telangana',
+    'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal', 'Andaman and Nicobar Islands', 'Chandigarh',
+    'Dadra and Nagar Haveli and Daman and Diu', 'Delhi', 'Jammu and Kashmir', 'Ladakh', 'Lakshadweep', 'Puducherry',
+];
+// Must match the note assets/app.js sends when the customer picks "let our architect decide".
+$ARCHITECT_NOTE = 'Customer requested architect to decide';
 
 $designId = (int)($input['design_id'] ?? 0);
 $name = trim((string)($input['customer_name'] ?? ''));
@@ -28,12 +37,24 @@ $structAddon = !empty($input['structural_addon']);
 $structIncluded = !empty($input['structural_included']);
 $modIds = $input['modifications'] ?? [];
 $rawDetails = $input['modification_details'] ?? [];
+// 'call' = the customer wants our design expert to phone them instead of picking changes.
+$contactPref = ($input['contact_preference'] ?? 'self') === 'call' ? 'call' : 'self';
+$state = trim((string)($input['customer_state'] ?? ''));
+$district = trim((string)($input['customer_district'] ?? ''));
+$callbackNotes = trim((string)($input['callback_notes'] ?? ''));
 
 // Field-level errors so the order form can show each message next to its field.
 $errors = [];
 if ($name === '' || mb_strlen($name) > 100) $errors['customer_name'] = 'Please type your name.';
 if (!preg_match('/^[0-9]{10}$/', $phone)) $errors['customer_phone'] = 'Please type your 10-digit mobile number.';
-if ($city === '' || mb_strlen($city) > 100) $errors['customer_city'] = 'Please type your city or town.';
+if ($contactPref === 'call') {
+    if (!in_array($state, $STATES, true)) $errors['customer_state'] = 'Please choose your state.';
+    if ($district === '' || mb_strlen($district) > 100) $errors['customer_district'] = 'Please type your district or city.';
+    if (mb_strlen($callbackNotes) > 1000) $errors['callback_notes'] = 'Please make your note a little shorter.';
+    $city = $district; // staff dashboards show customer_city
+} elseif ($city === '' || mb_strlen($city) > 100) {
+    $errors['customer_city'] = 'Please type your city or town.';
+}
 if ($plotWidth !== null && ($plotWidth < 1 || $plotWidth > 1000)) $errors['plot_width'] = 'Please type a plot width between 1 and 1000 feet.';
 if ($plotLength !== null && ($plotLength < 1 || $plotLength > 1000)) $errors['plot_length'] = 'Please type a plot length between 1 and 1000 feet.';
 if ($facing !== null && !in_array($facing, $FACINGS, true)) $errors['facing'] = 'Please choose East, West, North or South.';
@@ -58,6 +79,31 @@ $design = $stmt->fetch();
 if (!$design) {
     http_response_code(404);
     echo json_encode(['error' => 'We could not find this design. Please pick another one.']);
+    exit;
+}
+
+// ---- "Call me" request -----------------------------------------------------------
+// No changes are picked yet, so nothing to price beyond the design itself: store the
+// base price and mark it for the team, who will call and work out the real order.
+if ($contactPref === 'call') {
+    $orderCode = 'PZL-' . strtoupper(bin2hex(random_bytes(3)));
+    $stmt = $pdo->prepare(
+        "INSERT INTO library_orders
+            (order_code, design_id, customer_name, customer_phone, customer_city, plot_width, plot_length, facing,
+             structural_addon, total_price, status, needs_manual_review, estimated_delivery_days,
+             customer_state, customer_district, contact_preference, callback_notes)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, 'new', 1, ?, ?, ?, 'call', ?)"
+    );
+    $stmt->execute([
+        $orderCode, $designId, $name, $phone, $city, $plotWidth, $plotLength, $facing,
+        (int)$design['base_price'], (int)$design['delivery_days'],
+        $state, $district, $callbackNotes === '' ? null : $callbackNotes,
+    ]);
+    echo json_encode([
+        'order_code' => $orderCode,
+        'callback' => true,
+        'design_name' => $design['name'],
+    ]);
     exit;
 }
 
@@ -118,7 +164,10 @@ foreach ($mods as $m) {
             $rooms = [];
             foreach ($stmt->fetchAll() as $r) $rooms[(int)$r['id']] = $r['room_type'];
         }
-        if ($rooms) {
+        if (count($entries) === 1 && $entries[0]['room_id'] === null && $entries[0]['custom_note'] === $ARCHITECT_NOTE) {
+            // "Let our architect decide": no rooms picked, charged as one room.
+            $entries[0]['action'] = 'other';
+        } elseif ($rooms) {
             if (!$entries) $fail('Please pick at least one room for: ' . $label);
             $seen = [];
             foreach ($entries as $i => $e) {

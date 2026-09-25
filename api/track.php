@@ -26,8 +26,8 @@ $pdo = getDB();
 // Order code + phone together act as the customer's lightweight credential,
 // so both must match -- never look an order up by code alone.
 $stmt = $pdo->prepare(
-    "SELECT o.order_code, o.created_at, o.status, o.total_price, o.structural_addon, o.structural_included,
-            o.needs_manual_review, o.estimated_delivery_days, o.modifications, d.name AS design_name
+    // o.* so this keeps working before the phase 3c contact_preference column exists.
+    "SELECT o.*, d.name AS design_name
      FROM library_orders o JOIN designs d ON o.design_id = d.id
      WHERE o.order_code = ? AND o.customer_phone = ?"
 );
@@ -62,4 +62,6 @@ echo json_encode([
     'needs_manual_review' => (bool)$order['needs_manual_review'],
     'estimated_delivery_days' => $order['estimated_delivery_days'] === null ? null : (int)$order['estimated_delivery_days'],
     'modifications' => $modLabels,
+    // true when the customer asked our design expert to call instead of picking changes
+    'callback' => ($order['contact_preference'] ?? 'self') === 'call',
 ]);

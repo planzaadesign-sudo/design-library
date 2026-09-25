@@ -45,6 +45,9 @@ function validate_brief_input(array $in, $forDesign = false) {
     if ($d['ground_coverage_pct'] !== null && ($d['ground_coverage_pct'] < 10 || $d['ground_coverage_pct'] > 100)) return [null, 'Ground coverage must be between 10% and 100%.'];
 
     if (!$forDesign) {
+        // Two-step posting: the form only offers "Post this brief" after the similarity
+        // results were shown, and sets this flag then. A direct POST without it is refused.
+        if (empty($in['similarity_checked'])) return [null, 'Please click "Check Similarity" and review the results before posting this brief.'];
         $d['differentiation_notes'] = $str('differentiation_notes');
         if ($d['differentiation_notes'] === '') return [null, 'Please tell the designer what should make this design different.'];
         if (mb_strlen($d['differentiation_notes']) > 3000) return [null, 'Please keep "what should be different" shorter.'];

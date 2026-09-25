@@ -135,6 +135,8 @@ function render_brief_form(array $v, array $opts) {
         . ' data-brief-url="' . bf_h($opts['brief_url'] ?? '') . '" data-threshold="' . SIM_WARN . '" novalidate>'
         . $opts['hidden']
         . '<input type="hidden" name="confirm_similar" value="">'
+        // Set by assets/brief-form.js only after "Check Similarity" has shown the results.
+        . '<input type="hidden" name="similarity_checked" value="">'
         . '<label class="bf-field bf-title">Brief title<input name="title" required maxlength="150" value="' . bf_h($val('title')) . '" placeholder="e.g. 30x40 East-facing 3BHK with courtyard"></label>'
         . render_param_sections($v, true)
         . '<fieldset class="bf-section"><legend><span>6</span>What should be different about this design?</legend>'
@@ -147,14 +149,15 @@ function render_brief_form(array $v, array $opts) {
         .   '<label class="bf-field">Deadline<input type="date" name="deadline" required value="' . bf_h($val('deadline')) . '"></label>'
         . '</div></fieldset>'
         . '<p class="bf-error" id="bfError" role="alert"></p>'
-        . '<div class="sim-panel" id="simPanel" hidden></div>'
+        // Step 1 only checks; the results (and the real "Post this brief" button) appear below.
         . '<div class="bf-actions">' . (!empty($opts['cancel']) ? '<a class="btn" href="' . bf_h($opts['cancel']) . '">Cancel</a>' : '')
-        .   '<button class="btn btn-primary" type="submit" id="bfSubmit">Post brief</button></div>'
+        .   '<button class="btn btn-primary" type="submit" id="bfSubmit">Check Similarity</button></div>'
+        . '<div class="sim-panel" id="simPanel" hidden aria-live="polite"></div>'
         . '</form>';
 }
 
 function sim_bar($score) {
-    $tone = $score > SIM_WARN ? 'high' : ($score >= 50 ? 'mid' : 'low');
+    $tone = $score >= SIM_WARN ? 'high' : ($score >= 50 ? 'mid' : 'low');
     return '<span class="sim-score ' . $tone . '"><span class="sim-bar"><i style="width:' . max(0, min(100, (int)$score)) . '%"></i></span><b>' . (int)$score . '% similar</b></span>';
 }
 

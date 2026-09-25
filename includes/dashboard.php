@@ -198,7 +198,7 @@ function dash_layout_start($brand, $title, array $nav, $active, $userName, array
         . '<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'
         . '<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">'
         . '<link rel="stylesheet" href="../assets/style.css?v=20260925g"><link rel="stylesheet" href="../assets/admin.css?v=2">'
-        . '<link rel="stylesheet" href="../assets/brief-form.css?v=1"><link rel="stylesheet" href="../assets/dashboard.css?v=1">';
+        . '<link rel="stylesheet" href="../assets/brief-form.css?v=2"><link rel="stylesheet" href="../assets/dashboard.css?v=1">';
     foreach ($extraCss as $css) $html .= '<link rel="stylesheet" href="' . dh($css) . '">';
     $html .= '</head><body class="adm-body"><div class="adm" id="adm"><aside class="adm-side" id="admSide" aria-label="Menu">'
         . '<div class="adm-brand">planzaa<span>.</span> ' . dh($brand) . '</div><nav class="adm-nav">';
@@ -217,7 +217,7 @@ function dash_layout_end() {
     return '</div></main></div>'
         . '<dialog class="adm-confirm" id="admConfirm"><form method="dialog"><h2>Are you sure?</h2><p id="admConfirmText">This cannot be undone.</p>'
         . '<div class="adm-actions"><button class="btn" value="cancel">Cancel</button><button class="btn btn-danger" value="ok" id="admConfirmOk">Yes, do it</button></div></form></dialog>'
-        . '<script src="../assets/admin.js?v=1"></script><script src="../assets/brief-form.js?v=1"></script></body></html>';
+        . '<script src="../assets/admin.js?v=1"></script><script src="../assets/brief-form.js?v=2"></script></body></html>';
 }
 
 function dash_flash_html($flash) {

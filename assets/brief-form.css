@@ -112,3 +112,8 @@
 .fl-brief-notes{margin-top:10px; font-size:13px; white-space:pre-line;}
 .fl-brief-notes strong{display:block; margin-top:8px; color:var(--text);}
 .phase5-note{padding:12px 14px; border-left:4px solid var(--attention); border-radius:8px; background:var(--attention-soft); font-size:14px;}
+.sim-panel{margin-top:16px;}
+.sim-panel.unique{border-color:var(--success);}
+.sim-head.ok svg{color:var(--success);}
+.sim-head.ok h3{color:var(--success);}
+.sim-strong{margin:0 0 12px; padding:10px 12px; border-left:4px solid var(--attention); border-radius:8px; background:var(--attention-soft); color:var(--attention); font-weight:600; font-size:14px;}

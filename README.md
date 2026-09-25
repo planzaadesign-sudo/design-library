@@ -10,8 +10,13 @@ MariaDB database before delivery. See "What was tested" at the bottom.
   (`design.php`), a modification configurator with live pricing
   (`customize.php`), the order form (`order.php`), and order tracking by
   order code + phone (`track.php`). No login required.
-- **Admin** (`/admin/`) — every order, every brief, the full design library,
-  the whole team. Full control.
+- **Admin** (`/admin/`) — dashboard with stats and a to-do list; orders
+  (search, filters, room-level detail, final price for manual-review and
+  call-back orders, stages, assignment); designs and their rooms; the
+  modification price catalog; briefs; submission review and publishing;
+  team; freelancers; password change and CSV export. `admin/index.php`
+  handles login and routing; each tab is an `admin/_tab_*.php` file that
+  refuses to run on its own, and every form carries a CSRF token.
 - **In-house team** (`/inhouse/`) — assigned orders, review queue for
   freelancer submissions (approve or send back), standardize approved
   submissions into published designs, post new briefs.
@@ -40,7 +45,9 @@ Change these passwords before going to production.
    `schema-phase3.sql` (it switches the change labels to simple wording),
    then the "Phase 3b" section at the very bottom, once (room lists for
    the 6 sample designs, room-by-room order details, two new changes),
-   then the "Phase 3c" section, once (columns for "call me" requests).
+   then the "Phase 3c" section, once (columns for "call me" requests),
+   then `schema-phase4.sql`, once (admin dashboard: when an order was assigned).
+   If anything is missing, the admin dashboard lists exactly what to run.
 3. Fill in `config.php` with real database credentials.
 4. Upload everything except the `.sql` files into the `test` folder.
 5. Visit `test.planzaa.in/seed_accounts.php` once to create logins and

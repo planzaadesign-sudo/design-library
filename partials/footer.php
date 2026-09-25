@@ -8,4 +8,4 @@
     </nav>
   </div>
 </footer>
-<script src="assets/app.js?v=20260925f"></script>
+<script src="assets/app.js?v=20260925g"></script>

@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/style.css?v=20260925f">
+<link rel="stylesheet" href="assets/style.css?v=20260925g">
 </head>
 <body class="site">
 <?php include __DIR__ . '/partials/nav.php'; ?>
@@ -95,7 +95,9 @@ function choiceHtml(){
     +     '<span class="path-sub">Pick exactly what you want to change, room by room. You\u2019ll see the price update as you go.</span>'
     +     '<span class="path-go">Start picking <span class="arrow" aria-hidden="true">\u2192</span></span>'
     +   '</button>'
-    + '</div></section>';
+    + '</div>'
+    + '<p class="path-note">' + icon('check') + '<span>The price is the same either way — there is no extra charge for phone consultation.</span></p>'
+    + '</section>';
 }
 
 // Floating-label field, same look as the order form.

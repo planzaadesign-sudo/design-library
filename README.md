@@ -5,8 +5,11 @@ MariaDB database before delivery. See "What was tested" at the bottom.
 
 ## What's included
 
-- **Customer** (`/`) — browse designs, live plot-match check, structural
-  drawings add-on, order placement. No login required.
+- **Customer** (`/`) — browse and filter designs with a live plot-match
+  check (`index.php`), design detail with the structural add-on
+  (`design.php`), a modification configurator with live pricing
+  (`customize.php`), the order form (`order.php`), and order tracking by
+  order code + phone (`track.php`). No login required.
 - **Admin** (`/admin/`) — every order, every brief, the full design library,
   the whole team. Full control.
 - **In-house team** (`/inhouse/`) — assigned orders, review queue for
@@ -30,9 +33,11 @@ Change these passwords before going to production.
 ## Deploy to Hostinger — step by step
 
 1. Create the database in hPanel -> Databases, note host/name/user/password.
-2. In phpMyAdmin, import `schema.sql` first, then `schema-phase2.sql`.
+2. In phpMyAdmin, import `schema.sql` first, then `schema-phase2.sql`,
+   then `schema-phase3.sql` (modifications menu + new order columns).
+   On an existing database, only import `schema-phase3.sql` — once.
 3. Fill in `config.php` with real database credentials.
-4. Upload everything except the two `.sql` files into the `test` folder.
+4. Upload everything except the `.sql` files into the `test` folder.
 5. Visit `test.planzaa.in/seed_accounts.php` once to create logins and
    sample briefs. Then DELETE `seed_accounts.php` from the server
    immediately — a script with known passwords must never stay live.

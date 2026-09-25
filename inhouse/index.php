@@ -7,6 +7,9 @@ require_once __DIR__ . '/../includes/design_ui.php';
 
 $pdo = getDB();
 $myId = (int)$_SESSION['staff_id'];
+// Admins can open this dashboard too. They have no orders of their own here, so they see
+// every team member's orders (in-house staff see only the orders assigned to them).
+$seeAll = ($_SESSION['staff_role'] ?? '') === 'admin' ? 1 : 0;
 $TABS = [
     'dashboard' => ['Dashboard', 'dashboard'], 'orders' => ['My Orders', 'orders'], 'review' => ['Review Queue', 'review'],
     'standardize' => ['Standardize', 'standardize'], 'postbrief' => ['Post Brief', 'postbrief'], 'briefs' => ['My Briefs', 'briefs'],
@@ -95,7 +98,7 @@ if (!$problems && $_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // ---- Order notes and files (only orders assigned to me) ----
     if ($action === 'order_note' || $action === 'order_file') {
-        $order = sim_q("SELECT id, order_code FROM library_orders WHERE id = ? AND assigned_to = ?", [(int)($_POST['order_id'] ?? 0), $myId])->fetch();
+        $order = sim_q("SELECT id, order_code FROM library_orders WHERE id = ? AND (? = 1 OR assigned_to = ?)", [(int)($_POST['order_id'] ?? 0), $seeAll, $myId])->fetch();
         if (!$order) { dash_flash('This order is not assigned to you.', 'err'); dash_redirect(['tab' => 'orders']); }
         $back = function ($hash) use ($order) { header('Location: ' . dash_url(['tab' => 'orders', 'id' => (int)$order['id']]) . $hash); exit; };
         if ($action === 'order_note') {
@@ -158,14 +161,14 @@ endif;
 // =====================================================================================
 if ($tab === 'dashboard'):
     $stats = [
-        ['My active orders', $one("SELECT COUNT(*) FROM library_orders WHERE assigned_to = ? AND status <> 'delivered'", [$myId]), 'assigned to you', 'accent', 'orders'],
+        [$seeAll ? 'Active orders' : 'My active orders', $one("SELECT COUNT(*) FROM library_orders WHERE (? = 1 OR assigned_to = ?) AND status <> 'delivered'", [$seeAll, $myId]), $seeAll ? 'whole team' : 'assigned to you', 'accent', 'orders'],
         ['Pending reviews', $pendingCount, 'designs to check', 'amber', 'review'],
         ['Ready to standardize', $readyCount, 'approved, not published', 'green', 'standardize'],
         ['My posted briefs', $one("SELECT COUNT(*) FROM briefs WHERE created_by = ?", [$myId]), 'all time', 'accent', 'briefs'],
     ];
     $active = sim_q("SELECT o.id, o.order_code, o.customer_name, o.status, o.created_at, d.name AS design_name
                      FROM library_orders o JOIN designs d ON d.id = o.design_id
-                     WHERE o.assigned_to = ? AND o.status <> 'delivered' ORDER BY o.id DESC LIMIT 10", [$myId])->fetchAll();
+                     WHERE (? = 1 OR o.assigned_to = ?) AND o.status <> 'delivered' ORDER BY o.id DESC LIMIT 10", [$seeAll, $myId])->fetchAll();
     $pending = sim_q("SELECT s.id, s.submitted_at, b.title, f.name AS freelancer_name FROM submissions s
                       JOIN briefs b ON b.id = s.brief_id JOIN freelancers f ON f.id = s.freelancer_id
                       WHERE s.review_status = 'pending' ORDER BY s.id LIMIT 8")->fetchAll();
@@ -219,7 +222,7 @@ elseif ($tab === 'orders' && !empty($_GET['id'])):
     $o = sim_q("SELECT o.*, d.name AS design_name, d.plot_width AS d_width, d.plot_length AS d_length, d.facing AS d_facing,
                        d.floors AS d_floors, d.bhk AS d_bhk, d.base_price AS d_price, d.design_code AS d_code
                 FROM library_orders o JOIN designs d ON d.id = o.design_id
-                WHERE o.id = ? AND o.assigned_to = ?", [(int)$_GET['id'], $myId])->fetch();
+                WHERE o.id = ? AND (? = 1 OR o.assigned_to = ?)", [(int)$_GET['id'], $seeAll, $myId])->fetch();
     if (!$o):
         echo '<div class="adm-card"><p>This order is not assigned to you. <a href="' . dh(dash_url(['tab' => 'orders'])) . '">Back to my orders</a></p></div>';
     else:
@@ -297,14 +300,18 @@ elseif ($tab === 'orders' && !empty($_GET['id'])):
     endif;
 
 elseif ($tab === 'orders'):
-    $orders = sim_q("SELECT o.*, d.name AS design_name FROM library_orders o JOIN designs d ON d.id = o.design_id
-                     WHERE o.assigned_to = ? ORDER BY (o.status = 'delivered'), o.id DESC", [$myId])->fetchAll();
+    $orders = sim_q("SELECT o.*, d.name AS design_name, st.name AS staff_name FROM library_orders o JOIN designs d ON d.id = o.design_id
+                     LEFT JOIN staff st ON st.id = o.assigned_to
+                     WHERE (? = 1 OR o.assigned_to = ?) ORDER BY (o.status = 'delivered'), o.id DESC", [$seeAll, $myId])->fetchAll();
 ?>
+<?php if ($seeAll): ?>
+  <p class="muted small-note">You are signed in as the admin, so this shows every team member's orders. To see only one person's orders, sign in as them.</p>
+<?php endif; ?>
 <?php if (!$orders): ?>
-  <div class="adm-card"><p class="empty">No orders are assigned to you yet. The admin assigns orders from their dashboard.</p></div>
+  <div class="adm-card"><p class="empty"><?= $seeAll ? 'There are no orders yet.' : 'No orders are assigned to you yet. New orders are assigned automatically.' ?></p></div>
 <?php else: ?>
 <div class="table-wrap"><table class="adm-table">
-  <thead><tr><th>Order</th><th>Customer</th><th>Phone</th><th>City</th><th>Design</th><th>Type</th><th>Status</th><th>Date</th></tr></thead><tbody>
+  <thead><tr><th>Order</th><th>Customer</th><th>Phone</th><th>City</th><th>Design</th><th>Type</th><th>Status</th><?= $seeAll ? '<th>Assigned to</th>' : '' ?><th>Date</th></tr></thead><tbody>
   <?php foreach ($orders as $o): $link = dash_url(['tab' => 'orders', 'id' => $o['id']]); ?>
     <tr class="row-link<?= dash_order_type($o) === 'call' && $o['status'] === 'new' ? ' flag' : '' ?>" data-href="<?= dh($link) ?>">
       <td class="nowrap"><a href="<?= dh($link) ?>"><?= dh($o['order_code']) ?></a></td>
@@ -312,6 +319,7 @@ elseif ($tab === 'orders'):
       <td class="nowrap"><a href="tel:+91<?= dh($o['customer_phone']) ?>"><?= dh($o['customer_phone']) ?></a></td>
       <td><?= dh(($o['customer_city'] ?? '') ?: (($o['customer_district'] ?? '') ?: '—')) ?></td>
       <td><?= dh($o['design_name']) ?></td><td><?= dash_type_badge($o) ?></td><td><?= dash_stage_badge($o['status']) ?></td>
+      <?php if ($seeAll): ?><td><?= dh($o['staff_name'] ?? 'Nobody yet') ?></td><?php endif; ?>
       <td class="nowrap"><?= dash_date($o['created_at']) ?></td>
     </tr>
   <?php endforeach; ?></tbody></table></div>

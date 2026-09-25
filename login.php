@@ -44,15 +44,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/style.css">
-<style>.login-box{max-width:360px; margin:80px auto; padding:28px; border:1px solid var(--border); border-radius:var(--radius); background:var(--surface);}
-.login-tabs{display:flex; gap:8px; margin-bottom:18px;}
-.login-tab{flex:1; text-align:center; padding:8px; border-radius:var(--radius); border:1px solid var(--border-strong); text-decoration:none; color:var(--text-secondary); font-size:13px;}
-.login-tab.active{background:var(--accent); color:var(--bg); border-color:var(--accent);}</style>
+<link rel="stylesheet" href="assets/style.css?v=20260925">
 </head>
 <body>
+<div class="topbar"><div class="topbar-inner"><div class="wordmark">planzaa<span>.</span> team</div></div></div>
 <div class="wrap"><div class="login-box">
-  <h1 style="margin-bottom:18px">Sign in</h1>
+  <h1>Sign in</h1>
   <div class="login-tabs">
     <a class="login-tab <?= $type==='staff'?'active':'' ?>" href="?type=staff">Staff</a>
     <a class="login-tab <?= $type==='freelancer'?'active':'' ?>" href="?type=freelancer">Freelancer</a>
@@ -60,9 +57,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <?php if ($error): ?><div class="error-note"><?= htmlspecialchars($error) ?></div><?php endif; ?>
   <form method="POST">
     <input type="hidden" name="type" value="<?= htmlspecialchars($type) ?>">
-    <div class="field"><label>Email</label><input type="email" name="email" required style="width:100%"></div>
-    <div class="field"><label>Password</label><input type="password" name="password" required style="width:100%"></div>
-    <button class="btn btn-primary btn-block" style="margin-top:12px" type="submit">Sign in</button>
+    <div class="field"><label>Email</label><input type="email" name="email" required></div>
+    <div class="field"><label>Password</label><input type="password" name="password" required></div>
+    <button class="btn btn-primary btn-block" style="margin-top:6px" type="submit">Sign in</button>
   </form>
 </div></div>
 </body>

@@ -161,7 +161,7 @@ td.late{color:var(--attention); font-weight:600;}
 .detail-sub{display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin-top:6px; font-size:13px;}
 .detail-sub a{color:var(--accent); font-weight:600;}
 .detail-grid{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; align-items:start;}
-@media (max-width:1000px){.detail-grid{grid-template-columns:1fr;}}
+@media (max-width:1000px){.detail-grid{grid-template-columns:minmax(0,1fr);}}
 .kv{display:grid; grid-template-columns:130px minmax(0,1fr); gap:8px 12px; margin:0; font-size:14px;}
 .kv dt{color:var(--text-secondary);}
 .kv dd{margin:0; font-weight:500;}
@@ -278,3 +278,47 @@ tr.open td{background:var(--accent-soft) !important;}
   .slot-grid{grid-template-columns:1fr;}
   .history li{flex-direction:column; gap:2px;}
 }
+
+/* ---- Designer registrations (admin Freelancers tab) ---- */
+.pending-block{margin-bottom:22px;}
+.pending-block > h2{margin:0 0 2px; font-size:19px;}
+.pending-block > p{margin:0 0 14px; font-size:14px;}
+.pending-card{border-left:5px solid var(--amber, #B7791F); box-shadow:var(--shadow-sm, 0 1px 3px rgba(0,0,0,.06));}
+.pending-top{display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:12px;}
+.pending-top h3{margin:0; font-size:18px;}
+.profile-kv{grid-template-columns:120px minmax(0,1fr);}
+.profile-kv dd a{color:var(--accent);}
+.about-h{margin:16px 0 6px; font-size:13px; color:var(--text-secondary); font-weight:600;}
+.about-text{margin:0; padding:12px 14px; border-radius:8px; background:var(--surface-2); font-size:14px; line-height:1.6; white-space:normal; overflow-wrap:anywhere;}
+.portfolio-btn{margin-right:6px;}
+.break{overflow-wrap:anywhere; word-break:break-word;}
+.review-actions{display:flex; flex-wrap:wrap; align-items:flex-start; gap:12px; margin-top:16px; padding-top:14px; border-top:1px solid var(--border);}
+.review-actions > form{margin:0;}
+.btn-approve{background:var(--success) !important; border-color:var(--success) !important; color:#fff !important;}
+.btn-approve:hover{filter:brightness(1.08);}
+.btn-reject{border-color:var(--attention) !important; color:var(--attention) !important; background:transparent !important;}
+.btn-reject:hover{background:var(--attention-soft) !important;}
+.reject-box{flex:1 1 280px; min-width:0;}
+.reject-box > summary{display:inline-flex; align-items:center; list-style:none; cursor:pointer; font-size:14px; padding:10px 16px; border:1px solid var(--attention); border-radius:8px; font-weight:600; user-select:none;}
+.reject-box > summary::-webkit-details-marker{display:none;}
+.reject-box[open] > summary{background:var(--attention-soft) !important;}
+.reject-box form{margin-top:10px; padding:12px; border:1px solid var(--attention); border-radius:8px; background:var(--attention-soft); animation:slideDown 220ms ease-out;}
+.reject-box label{display:block; margin-bottom:6px; font-size:13px; font-weight:500;}
+.reject-box textarea{width:100%; margin-bottom:10px;}
+.fl-status-card h3{margin:0 0 4px;}
+.fl-status-card p{margin:0 0 10px;}
+.fl-status-card.status-pending{border-left:5px solid var(--amber, #B7791F);}
+.fl-status-card.status-suspended, .fl-status-card.status-rejected{border-left:5px solid var(--attention);}
+.fl-status-card.status-active{border-left:5px solid var(--success);}
+.filter-pills{display:flex; flex-wrap:wrap; gap:6px;}
+.fpill .pill-n{display:inline-block; min-width:18px; margin-left:2px; padding:0 5px; border-radius:99px; background:var(--surface-2); color:var(--text-secondary); font-size:11px; text-align:center;}
+.fpill.on .pill-n{background:rgba(255,255,255,.22); color:inherit;}
+
+/* ---- Designer profile form (freelancer dashboard) ---- */
+.form-grid-adm .span-all{grid-column:1 / -1;}
+.form-grid-adm textarea{width:100%; min-height:130px; font:inherit; font-size:14px; line-height:1.5;}
+.form-grid-adm input.invalid, .form-grid-adm select.invalid, .form-grid-adm textarea.invalid{border-color:var(--attention) !important;}
+.field-err{color:var(--attention); font-weight:500;}
+.form-grid-adm input[readonly]{background:var(--surface-2); color:var(--text-secondary); cursor:not-allowed;}
+.form-grid-adm small a{color:var(--accent);}
+@media (max-width:560px){.profile-kv{grid-template-columns:1fr; gap:2px 0;} .profile-kv dd{margin-bottom:8px;}}

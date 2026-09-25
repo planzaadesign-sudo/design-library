@@ -8,6 +8,7 @@ define('PLANZAA_ADMIN', true);
 require __DIR__ . '/_lib.php';
 require_once __DIR__ . '/../includes/brief_ui.php'; // similarity engine, brief form, publishing
 require_once __DIR__ . '/../includes/design_ui.php'; // design codes, files, history, order notes
+require_once __DIR__ . '/../includes/freelancer_profile.php'; // designer registrations
 
 $pdo = getDB();
 $myId = (int)$_SESSION['staff_id'];
@@ -44,11 +45,12 @@ $OLD = $_SESSION['admin_old'] ?? [];
 unset($_SESSION['admin_old']);
 
 // Small counters next to the menu items that need attention.
-$counts = ['orders' => 0, 'submissions' => 0];
+$counts = ['orders' => 0, 'submissions' => 0, 'freelancers' => 0];
 if (!$problems) {
     $counts['orders'] = (int)q("SELECT COUNT(*) FROM library_orders WHERE status <> 'delivered'
         AND (needs_manual_review = 1 OR (contact_preference = 'call' AND status = 'new'))")->fetchColumn();
     $counts['submissions'] = (int)q("SELECT COUNT(*) FROM submissions WHERE review_status = 'pending'")->fetchColumn();
+    $counts['freelancers'] = (int)q("SELECT COUNT(*) FROM freelancers WHERE status = 'pending'")->fetchColumn();
 }
 ?>
 <!DOCTYPE html>
@@ -62,7 +64,7 @@ if (!$problems) {
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/style.css?v=20260926a">
-<link rel="stylesheet" href="../assets/admin.css?v=3">
+<link rel="stylesheet" href="../assets/admin.css?v=6">
 <link rel="stylesheet" href="../assets/brief-form.css?v=2">
 </head>
 <body class="adm-body">

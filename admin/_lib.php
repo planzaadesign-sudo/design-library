@@ -202,6 +202,9 @@ function schema_problems() {
     if (!phase7_ready()) {
         $problems[] = 'Design codes, design files and auto-assignment need the database update &#8212; run schema-phase7.sql.';
     }
+    if (!phase8_ready()) {
+        $problems[] = 'Designer registration and approval need the database update &#8212; run schema-phase8.sql.';
+    }
     if (!phase5_ready()) {
         $problems[] = 'The design similarity columns (plot shape, main door, stairs, style&#8230;) are missing &#8212; run schema-phase5.sql.';
     }

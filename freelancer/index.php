@@ -3,6 +3,7 @@ require_once __DIR__ . '/../db.php';
 require_once __DIR__ . '/../auth.php';
 requireFreelancer();
 require_once __DIR__ . '/../includes/dashboard.php';
+require_once __DIR__ . '/../includes/freelancer_profile.php';
 
 $pdo = getDB();
 $myId = (int)$_SESSION['freelancer_id'];
@@ -10,6 +11,13 @@ $TABS = [
     'dashboard' => ['Dashboard', 'dashboard'], 'open' => ['Open Briefs', 'open'], 'work' => ['My Work', 'work'],
     'submissions' => ['My Submissions', 'submissions'], 'earnings' => ['Earnings', 'earnings'],
 ];
+$profileReady = phase8_ready();
+if ($profileReady) $TABS['profile'] = ['My Profile', 'expert'];
+// The sign-in page only lets active accounts in; this covers someone suspended while signed in.
+$myStatus = $profileReady ? (string)sim_q("SELECT status FROM freelancers WHERE id = ?", [$myId])->fetchColumn() : 'active';
+$canWork = $myStatus === 'active';
+$inactiveMsg = $myStatus === 'pending' ? 'Your account is still under review. You can claim briefs once our team approves it.'
+    : 'Your account is not active right now, so you cannot claim or send in work. Contact us at ' . PLANZAA_CONTACT_EMAIL . '.';
 $tab = $_GET['tab'] ?? 'dashboard';
 if ($tab === 'mine') $tab = 'work'; // old link
 if (!isset($TABS[$tab])) $tab = 'dashboard';
@@ -65,6 +73,40 @@ if ($ready && $_SERVER['REQUEST_METHOD'] === 'POST') {
     dash_csrf_check();
     $action = (string)($_POST['action'] ?? '');
 
+    // ---- My Profile ----
+    if ($action === 'profile_save' && $profileReady) {
+        [$d, $errs] = validate_profile_input($_POST, false);
+        if ($errs) {
+            $_SESSION['fl_old'] = array_intersect_key($_POST, array_flip(['name', 'phone', 'city', 'qualification', 'qualification_other', 'experience', 'about_me', 'portfolio_link']));
+            $_SESSION['fl_errors'] = $errs;
+            dash_flash('Please fix the highlighted ' . (count($errs) === 1 ? 'field' : 'fields') . '.', 'err');
+            dash_redirect(['tab' => 'profile']);
+        }
+        sim_q("UPDATE freelancers SET name = ?, phone = ?, city = ?, qualification = ?, qualification_other = ?, experience = ?, about_me = ?, portfolio_link = ? WHERE id = ?",
+            [$d['name'], $d['phone'], $d['city'], $d['qualification'], $d['qualification_other'], $d['experience'], $d['about_me'], $d['portfolio_link'], $myId]);
+        $_SESSION['freelancer_name'] = $d['name'];
+        dash_flash('Your profile has been saved.');
+        dash_redirect(['tab' => 'profile']);
+    }
+
+    if ($action === 'password_change') {
+        $hash = sim_q("SELECT password_hash FROM freelancers WHERE id = ?", [$myId])->fetchColumn();
+        $new = (string)($_POST['new_password'] ?? '');
+        $back = function () { header('Location: ' . dash_url(['tab' => 'profile']) . '#passwordForm'); exit; };
+        if (!$hash || !password_verify((string)($_POST['current_password'] ?? ''), $hash)) { dash_flash('Your current password is not correct.', 'err'); $back(); }
+        if (strlen($new) < 8) { dash_flash('The new password must be at least 8 characters.', 'err'); $back(); }
+        if ($new !== (string)($_POST['password2'] ?? '')) { dash_flash('The two new passwords do not match.', 'err'); $back(); }
+        sim_q("UPDATE freelancers SET password_hash = ? WHERE id = ?", [password_hash($new, PASSWORD_DEFAULT), $myId]);
+        dash_flash('Your password has been changed.');
+        $back();
+    }
+
+    // Accounts that are no longer active (suspended while signed in) keep their session
+    // but cannot take or send in new work.
+    if (!$canWork && in_array($action, ['claim', 'submit'], true)) {
+        dash_flash($inactiveMsg, 'err');
+        dash_redirect(['tab' => 'dashboard']);
+    }
     if ($action === 'claim') {
         $briefId = (int)($_POST['brief_id'] ?? 0);
         // The atomic part: this UPDATE only succeeds if the brief is STILL 'open'
@@ -117,6 +159,7 @@ foreach ($TABS as $k => [$label, $icon]) $nav[$k] = [$label, $icon, $k === 'work
 
 echo dash_layout_start('designer', $TABS[$tab][0], $nav, $tab, $_SESSION['freelancer_name']);
 echo dash_flash_html($flash);
+if ($ready && !$canWork) echo '<div class="adm-flash err" role="alert">' . dh($inactiveMsg) . '</div>';
 
 if (!$ready):
 ?>
@@ -219,6 +262,8 @@ elseif ($tab === 'open'):
 <p class="result-count"><?= count($briefs) ?> open brief<?= count($briefs) === 1 ? '' : 's' ?></p>
 <?php if (!$briefs): ?>
   <div class="adm-card empty-card"><p class="empty">No open briefs match right now. Check back soon &#8212; new briefs are posted every week.</p></div>
+<?php elseif (!$canWork): ?>
+  <div class="adm-card empty-card"><p class="empty">Open briefs are shown once your account is active.</p></div>
 <?php else: foreach ($briefs as $i => $b):
         $similar = count(sim_rank($b, $library_rows(), 1000, SIM_WARN));
 ?>
@@ -353,6 +398,66 @@ elseif ($tab === 'earnings'):
   <?php endforeach; ?></tbody></table></div>
 <p class="muted small-note">Royalty rate is illustrative. Right now your royalty is credited once, when the design is published. How repeat sales are paid is still being decided.</p>
 <?php endif;
+
+// =====================================================================================
+// MY PROFILE (their own details + password; email cannot be changed here)
+// =====================================================================================
+elseif ($tab === 'profile'):
+    $p = sim_q("SELECT * FROM freelancers WHERE id = ?", [$myId])->fetch();
+    $old = $_SESSION['fl_old'] ?? []; unset($_SESSION['fl_old']);
+    $perr = $_SESSION['fl_errors'] ?? []; unset($_SESSION['fl_errors']);
+    $val = function ($k) use ($old, $p) { return dh(array_key_exists($k, $old) ? $old[$k] : ($p[$k] ?? '')); };
+    $fe = function ($k) use ($perr) { return isset($perr[$k]) ? '<small class="field-err" role="alert">' . dh($perr[$k]) . '</small>' : ''; };
+    $inv = function ($k) use ($perr) { return isset($perr[$k]) ? ' aria-invalid="true" class="invalid"' : ''; };
+    $qual = $old['qualification'] ?? ($p['qualification'] ?? '');
+    $exp = $old['experience'] ?? ($p['experience'] ?? '');
+?>
+<section class="adm-card form-card profile-card" id="profileForm">
+  <h2>Your profile</h2>
+  <p class="muted small-note">This is what our team sees about you. Keep it up to date.</p>
+  <form method="post" data-saving>
+    <?= dash_csrf_field() ?><input type="hidden" name="action" value="profile_save">
+    <div class="form-grid-adm">
+      <label>Name<input name="name" required maxlength="100" autocomplete="name" value="<?= $val('name') ?>"<?= $inv('name') ?>><?= $fe('name') ?></label>
+      <label>Email<input value="<?= dh($p['email']) ?>" readonly aria-readonly="true" class="readonly"><small>Your email is how you sign in. To change it, write to <a href="mailto:<?= PLANZAA_CONTACT_EMAIL ?>"><?= PLANZAA_CONTACT_EMAIL ?></a>.</small></label>
+      <label>Mobile number<input name="phone" type="tel" inputmode="numeric" maxlength="14" required autocomplete="tel-national" value="<?= $val('phone') ?>"<?= $inv('phone') ?>><?= $fe('phone') ?></label>
+      <label>City<input name="city" required maxlength="100" autocomplete="address-level2" value="<?= $val('city') ?>"<?= $inv('city') ?>><?= $fe('city') ?></label>
+      <label>Qualification<select name="qualification" required id="profQual"<?= $inv('qualification') ?>>
+        <option value="">Choose one</option>
+        <?php foreach (QUALIFICATIONS as $k => $label): ?><option value="<?= $k ?>"<?= $qual === $k ? ' selected' : '' ?>><?= dh($label) ?></option><?php endforeach; ?>
+      </select><?= $fe('qualification') ?></label>
+      <label id="profQualOther"<?= $qual === 'other' ? '' : ' hidden' ?>>Please specify your qualification<input name="qualification_other" maxlength="100" value="<?= $val('qualification_other') ?>"<?= $inv('qualification_other') ?>><?= $fe('qualification_other') ?></label>
+      <label>Years of experience<select name="experience" required<?= $inv('experience') ?>>
+        <option value="">Choose one</option>
+        <?php foreach (EXPERIENCE_LEVELS as $k => $label): ?><option value="<?= $k ?>"<?= $exp === $k ? ' selected' : '' ?>><?= dh($label) ?></option><?php endforeach; ?>
+      </select><?= $fe('experience') ?></label>
+      <label>Portfolio link <span class="muted">(optional)</span><input name="portfolio_link" type="url" inputmode="url" maxlength="255" placeholder="https://behance.net/yourname" value="<?= $val('portfolio_link') ?>"<?= $inv('portfolio_link') ?>><?= $fe('portfolio_link') ?></label>
+      <label class="span-all">Tell us about yourself<textarea name="about_me" rows="6" minlength="<?= ABOUT_MIN ?>" maxlength="<?= ABOUT_MAX ?>" required<?= $inv('about_me') ?>><?= $val('about_me') ?></textarea>
+        <small>What kind of designs are you good at? What's your design style? At least <?= ABOUT_MIN ?> characters.</small><?= $fe('about_me') ?></label>
+    </div>
+    <div class="adm-actions left"><button class="btn btn-primary" type="submit">Save changes</button></div>
+  </form>
+</section>
+<section class="adm-card form-card" id="passwordForm">
+  <h2>Change your password</h2>
+  <form method="post" data-saving autocomplete="off">
+    <?= dash_csrf_field() ?><input type="hidden" name="action" value="password_change">
+    <div class="form-grid-adm one">
+      <label>Current password<input name="current_password" type="password" required autocomplete="current-password"></label>
+      <label>New password<input name="new_password" type="password" required minlength="8" autocomplete="new-password"><small>At least 8 characters.</small></label>
+      <label>Type the new password again<input name="password2" type="password" required minlength="8" autocomplete="new-password"></label>
+    </div>
+    <div class="adm-actions left"><button class="btn btn-primary" type="submit">Change password</button></div>
+  </form>
+</section>
+<script>
+(function () {
+  var q = document.getElementById('profQual'), box = document.getElementById('profQualOther');
+  if (!q || !box) return;
+  q.addEventListener('change', function () { box.hidden = q.value !== 'other'; box.querySelector('input').required = q.value === 'other'; });
+})();
+</script>
+<?php
 endif;
 
 echo dash_layout_end();

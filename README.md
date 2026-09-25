@@ -77,6 +77,9 @@ Change these passwords before going to production.
    After phase 7, make sure `uploads/designs/.htaccess` ("Require all denied")
    was uploaded too — design files are only served through `serve-file.php`.
    Set the admin notification email in Admin → Settings.
+   Then `schema-phase8.sql`, once (designers can register themselves at
+   `register.php`; the admin approves or rejects them in Admin → Freelancers.
+   Existing designer accounts stay active).
    If anything is missing, the admin dashboard lists exactly what to run.
 3. Fill in `config.php` with real database credentials.
 4. Upload everything except the `.sql` files into the `test` folder.

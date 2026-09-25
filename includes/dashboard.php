@@ -198,7 +198,7 @@ function dash_layout_start($brand, $title, array $nav, $active, $userName, array
         . '<meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">'
         . '<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'
         . '<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">'
-        . '<link rel="stylesheet" href="../assets/style.css?v=20260926a"><link rel="stylesheet" href="../assets/admin.css?v=3">'
+        . '<link rel="stylesheet" href="../assets/style.css?v=20260926a"><link rel="stylesheet" href="../assets/admin.css?v=6">'
         . '<link rel="stylesheet" href="../assets/brief-form.css?v=2"><link rel="stylesheet" href="../assets/dashboard.css?v=1">';
     foreach ($extraCss as $css) $html .= '<link rel="stylesheet" href="' . dh($css) . '">';
     $html .= '</head><body class="adm-body"><div class="adm" id="adm"><aside class="adm-side" id="admSide" aria-label="Menu">'

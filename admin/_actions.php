@@ -310,6 +310,45 @@ case 'freelancer_add':
     header('Location: ' . url(['tab' => 'freelancers']));
     exit;
 
+// Designer accounts: approve / reject registrations, suspend / reactivate. The admin never edits
+// the profile itself -- that stays the designer's own. Each UPDATE only runs from the right status.
+case 'freelancer_approve':
+case 'freelancer_reject':
+case 'freelancer_suspend':
+case 'freelancer_reactivate':
+    $id = $int('id');
+    $fr = q("SELECT * FROM freelancers WHERE id = ?", [$id])->fetch();
+    if (!$fr) $fail('Freelancer not found.', ['tab' => 'freelancers']);
+    $back = ['tab' => 'freelancers', 'id' => $id];
+    $mailNote = function ($sent) { return $sent ? ' We emailed them.' : ' (The email could not be sent — please let them know yourself.)'; };
+    if ($action === 'freelancer_approve') {
+        $st = q("UPDATE freelancers SET status = 'active', rejection_reason = NULL, reviewed_by = ?, reviewed_at = NOW() WHERE id = ? AND status IN ('pending', 'rejected')", [$myId, $id]);
+        if (!$st->rowCount()) $fail('This registration has already been reviewed.', $back);
+        flash($fr['name'] . ' is approved and can now sign in.' . $mailNote(email_freelancer_approved($fr)));
+        go_back(['tab' => 'freelancers']);
+    }
+    if ($action === 'freelancer_reject') {
+        $reason = $str('reason');
+        if ($reason === '') $fail('Please write the reason for not approving them. It is included in the email.', ['tab' => 'freelancers']);
+        if (mb_strlen($reason) > 1000) $fail('Please keep the reason under 1000 characters.', ['tab' => 'freelancers']);
+        $st = q("UPDATE freelancers SET status = 'rejected', rejection_reason = ?, reviewed_by = ?, reviewed_at = NOW() WHERE id = ? AND status = 'pending'", [$reason, $myId, $id]);
+        if (!$st->rowCount()) $fail('This registration has already been reviewed.', $back);
+        flash($fr['name'] . "'s registration was not approved." . $mailNote(email_freelancer_rejected($fr, $reason)));
+        go_back(['tab' => 'freelancers']);
+    }
+    if ($action === 'freelancer_suspend') {
+        $st = q("UPDATE freelancers SET status = 'suspended', reviewed_by = ?, reviewed_at = NOW() WHERE id = ? AND status = 'active'", [$myId, $id]);
+        if (!$st->rowCount()) $fail('Only active accounts can be suspended.', $back);
+        flash($fr['name'] . ' is suspended and cannot sign in. Their past work stays as it is.');
+        header('Location: ' . url($back));
+        exit;
+    }
+    $st = q("UPDATE freelancers SET status = 'active', reviewed_by = ?, reviewed_at = NOW() WHERE id = ? AND status = 'suspended'", [$myId, $id]);
+    if (!$st->rowCount()) $fail('Only suspended accounts can be reactivated.', $back);
+    flash($fr['name'] . ' is active again and can sign in.');
+    header('Location: ' . url($back));
+    exit;
+
 // ---- Settings -------------------------------------------------------------------------------
 // ---- Order notes and files ----------------------------------------------------------------
 case 'order_note':

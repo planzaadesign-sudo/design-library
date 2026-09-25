@@ -217,7 +217,7 @@ function dash_layout_end() {
     return '</div></main></div>'
         . '<dialog class="adm-confirm" id="admConfirm"><form method="dialog"><h2>Are you sure?</h2><p id="admConfirmText">This cannot be undone.</p>'
         . '<div class="adm-actions"><button class="btn" value="cancel">Cancel</button><button class="btn btn-danger" value="ok" id="admConfirmOk">Yes, do it</button></div></form></dialog>'
-        . '<script src="../assets/admin.js?v=1"></script><script src="../assets/brief-form.js?v=2"></script></body></html>';
+        . '<script src="../assets/admin.js?v=1"></script><script src="../assets/brief-form.js?v=3"></script></body></html>';
 }
 
 function dash_flash_html($flash) {

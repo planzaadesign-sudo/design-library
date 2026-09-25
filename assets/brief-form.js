@@ -17,6 +17,7 @@
     // Fields that are not design parameters -- editing them does not need a new check.
     const NOT_PARAMS = ['csrf', 'action', 'return', 'post_brief', 'confirm_similar', 'similarity_checked',
       'title', 'differentiation_notes', 'requirements', 'payout', 'deadline'];
+    const MIN_SHOW = 30; // smallest score listed in the results; fewer = "this brief is unique"
     const tone = s => s >= threshold ? 'high' : s >= 50 ? 'mid' : 'low';
     const setBtn = (text, busy) => { btn.textContent = text; btn.disabled = !!busy; };
 
@@ -34,7 +35,8 @@
     };
 
     const render = results => {
-      const shown = results.filter(r => r.score > 0);
+      // Below 30% a design is too different to be worth showing.
+      const shown = results.filter(r => r.score >= MIN_SHOW);
       const top = shown.length ? shown[0].score : 0;
       let html;
       if(shown.length){

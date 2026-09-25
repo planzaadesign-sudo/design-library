@@ -110,6 +110,6 @@ if (!$problems) {
   </form>
 </dialog>
 <script src="../assets/admin.js?v=1"></script>
-<script src="../assets/brief-form.js?v=2"></script>
+<script src="../assets/brief-form.js?v=3"></script>
 </body>
 </html>

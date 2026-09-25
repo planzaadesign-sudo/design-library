@@ -66,7 +66,9 @@ Change these passwords before going to production.
    then the "Phase 3c" section, once (columns for "call me" requests),
    then `schema-phase4.sql`, once (admin dashboard: when an order was assigned),
    then `schema-phase5.sql`, once (design similarity checks: 19 design
-   parameters on briefs and designs, plus floors/BHK on briefs).
+   parameters on briefs and designs, plus floors/BHK on briefs),
+   then `seed-design-params.sql` (real parameters for the 6 sample designs,
+   so the similarity check does not see them as identical; safe to re-run).
    If anything is missing, the admin dashboard lists exactly what to run.
 3. Fill in `config.php` with real database credentials.
 4. Upload everything except the `.sql` files into the `test` folder.

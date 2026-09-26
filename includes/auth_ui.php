@@ -8,7 +8,7 @@ function auth_page_start($title, $noReferrer = false) {
         . ($noReferrer ? '<meta name="referrer" content="no-referrer">' : '')
         . '<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'
         . '<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">'
-        . '<link rel="stylesheet" href="assets/style.css?v=20260926a"><link rel="stylesheet" href="assets/register.css?v=3"><link rel="stylesheet" href="assets/password.css?v=1">'
+        . '<link rel="stylesheet" href="assets/style.css?v=20260927a"><link rel="stylesheet" href="assets/register.css?v=3"><link rel="stylesheet" href="assets/password.css?v=1">'
         . '</head><body><div class="topbar"><div class="topbar-inner"><div class="wordmark">planzaa<span>.</span> team</div></div></div>'
         . '<div class="wrap"><div class="login-box auth-box">';
 }

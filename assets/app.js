@@ -190,7 +190,7 @@ function flash(el){
 
 function matchBadge(match, pop){
   const cls = pop ? ' pop' : '';
-  if(match === null || match === undefined) return '<span class="badge badge-neutral' + cls + '">Enter your plot size above to see which designs match</span>';
+  if(match === null || match === undefined) return '<span class="badge badge-neutral' + cls + '">Enter your plot size and direction above to see which designs match</span>';
   return match
     ? '<span class="badge badge-match' + cls + '">Fits your plot exactly</span>'
     : '<span class="badge badge-amber' + cls + '">Can be changed to fit your plot</span>';

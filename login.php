@@ -103,7 +103,7 @@ $h = function ($s) { return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/style.css?v=20260926a">
+<link rel="stylesheet" href="assets/style.css?v=20260927a">
 <link rel="stylesheet" href="assets/register.css?v=4">
 <link rel="stylesheet" href="assets/password.css?v=1">
 </head>

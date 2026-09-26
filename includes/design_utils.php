@@ -326,6 +326,7 @@ function auto_assign_order($orderId) {
                       FROM staff st WHERE st.role = 'inhouse' ORDER BY active, st.name, st.id")->fetchAll();
         if (!$team) {
             du_q("UPDATE library_orders SET assignment_reason = ? WHERE id = ?", ['Not assigned automatically — there are no in-house team members yet.', (int)$orderId]);
+            call_request_start($orderId); // still goes into the call queue (admin sees it)
             return null;
         }
         $pick = ['id' => (int)$team[0]['id'], 'name' => $team[0]['name']];
@@ -344,6 +345,8 @@ function auto_assign_order($orderId) {
     }
     du_q("UPDATE library_orders SET assigned_to = ?, assigned_at = NOW(), auto_assigned = 1, overload_warning = ?, assignment_reason = ? WHERE id = ?",
         [$pick['id'], $overload, $reason, (int)$orderId]);
+    // A new call-back order: it now waits for a call, and the person it was given to gets an email.
+    call_request_start($orderId);
     return ['staff_id' => $pick['id'], 'name' => $pick['name'], 'reason' => $reason, 'overload' => $overload];
 }
 
@@ -420,3 +423,5 @@ function store_order_file(array $order, array $upload, $staffId) {
 function order_files_list($orderId) {
     return du_q("SELECT f.*, s.name AS staff_name FROM order_files f JOIN staff s ON s.id = f.uploaded_by WHERE f.order_id = ? ORDER BY f.id DESC", [(int)$orderId])->fetchAll();
 }
+
+require_once __DIR__ . '/calls.php'; // call queue for call-back orders (uses the functions above)

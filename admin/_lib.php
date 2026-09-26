@@ -204,6 +204,9 @@ function schema_problems() {
     if (!phase7_ready()) {
         $problems[] = 'Design codes, design files and auto-assignment need the database update &#8212; run schema-phase7.sql.';
     }
+    if (phase10_ready() && !phase10b_ready()) {
+        $problems[] = 'The call queue for call-back orders needs the database update &#8212; run schema-phase10b.sql.';
+    }
     if (!phase10_ready()) {
         $problems[] = 'Quotations for call-back orders need the database update &#8212; run schema-phase10.sql.';
     }

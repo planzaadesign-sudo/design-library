@@ -266,12 +266,22 @@ function quote_payment_received($orderId, $staffId) {
                        WHERE id = ? AND quotation_id IS NOT NULL AND payment_status <> 'received'", [(int)$staffId, (int)$orderId])->rowCount();
 }
 
-/** What the customer's tracking page should say about a call-back order (null = normal tracking). */
+/**
+ * What the customer's tracking page should say about a call-back order (null = normal tracking):
+ * call_pending / call_again / call_done (before a quotation), sent, confirmed (payment pending),
+ * closed (they decided not to go ahead), or preparing (older orders without the call queue).
+ */
 function quote_tracking_state(array $order) {
     if (!phase10_ready() || ($order['contact_preference'] ?? 'self') !== 'call') return null;
     if (!empty($order['quotation_id'])) return ($order['payment_status'] ?? 'pending') === 'received' ? null : 'confirmed';
+    $call = function_exists('phase10b_ready') && phase10b_ready() ? ($order['call_status'] ?? null) : null;
+    if ($call === 'completed') return 'closed';
     $q = quote_for_order($order['id']);
-    return $q && in_array($q['status'], ['sent', 'viewed'], true) ? 'sent' : 'preparing';
+    if ($q && in_array($q['status'], ['sent', 'viewed'], true)) return 'sent';
+    if ($call === 'pending') return 'call_pending';
+    if ($call === 'in_progress') return 'call_again';
+    if ($call === 'contacted') return 'call_done';
+    return 'preparing';
 }
 
 // ---- Emails ------------------------------------------------------------------------------------

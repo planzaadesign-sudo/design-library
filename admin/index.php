@@ -65,7 +65,7 @@ if (!$problems) {
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/style.css?v=20260927a">
-<link rel="stylesheet" href="../assets/admin.css?v=8">
+<link rel="stylesheet" href="../assets/admin.css?v=9">
 <link rel="stylesheet" href="../assets/brief-form.css?v=2">
 <link rel="stylesheet" href="../assets/password.css?v=1">
 </head>
@@ -123,5 +123,6 @@ if (!$problems) {
 <script src="../assets/admin.js?v=1"></script>
 <script src="../assets/brief-form.js?v=3"></script>
 <script src="../assets/password.js?v=1"></script>
+<script src="../assets/calls.js?v=1"></script>
 </body>
 </html>

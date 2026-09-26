@@ -17,9 +17,16 @@ case 'order_assign':
     if ($staffId && !q("SELECT id FROM staff WHERE id = ?", [$staffId])->fetchColumn()) $fail('That team member no longer exists.');
     // A manual choice replaces the automatic one (and its reason / overload flag).
     $manual = $staffId ? 'Assigned by ' . $_SESSION['staff_name'] . ' on ' . date('j M Y') . '.' : null;
+    $before = q("SELECT * FROM library_orders WHERE id = ?", [$orderId])->fetch();
     q("UPDATE library_orders SET assigned_to = ?, assigned_at = " . ($staffId ? "NOW()" : "NULL") . ", auto_assigned = 0, overload_warning = 0, assignment_reason = ? WHERE id = ?",
         [$staffId ?: null, $manual, $orderId]);
-    flash($staffId ? 'Order assigned.' : 'Order unassigned.');
+    // Reassigning a customer who is still waiting for a call: tell the new person, and note it.
+    $callWaiting = $staffId && $before && phase10b_ready() && in_array($before['call_status'], ['pending', 'in_progress'], true) && (int)$before['assigned_to'] !== $staffId;
+    if ($callWaiting) {
+        call_note_append($orderId, $myId, $_SESSION['staff_name'], 'Reassigned this call to ' . q("SELECT name FROM staff WHERE id = ?", [$staffId])->fetchColumn() . '.', 'transferred');
+        try { call_email_staff($orderId); } catch (Throwable $e) { error_log('Call email failed: ' . $e->getMessage()); }
+    }
+    flash($staffId ? 'Order assigned.' . ($callWaiting ? ' We emailed them about the call.' : '') : 'Order unassigned.');
     go_back(['tab' => 'orders', 'id' => $orderId]);
 
 case 'order_stage':
@@ -363,6 +370,31 @@ case 'freelancer_reactivate':
 
 // ---- Settings -------------------------------------------------------------------------------
 // ---- Order notes and files ----------------------------------------------------------------
+case 'call_log':
+case 'call_note':
+    // The admin can make the call too, and add notes to any call-back order.
+    $orderId = $int('order_id');
+    $order = phase10b_ready() ? q("SELECT * FROM library_orders WHERE id = ?", [$orderId])->fetch() : null;
+    if (!$order) $fail('Order not found.', ['tab' => 'orders']);
+    if ($action === 'call_note') {
+        $err = call_add_note($order, $myId, $_SESSION['staff_name'], $str('note'));
+        if ($err) $fail($err, ['tab' => 'orders', 'id' => $orderId]);
+        flash('Note added.');
+        header('Location: ' . url(['tab' => 'orders', 'id' => $orderId]) . '#callNotes');
+        exit;
+    }
+    $next = $str('next');
+    $err = call_log($order, $myId, $_SESSION['staff_name'], $str('note'), $next);
+    if ($err) $fail($err, ['tab' => 'orders', 'id' => $orderId]);
+    if ($next === 'quote') {
+        flash('Call notes saved. Prepare the quotation below.');
+        header('Location: ../inhouse/index.php?tab=orders&id=' . $orderId . '#quote'); // the quotation builder lives on the order page there
+        exit;
+    }
+    flash($next === 'later' ? 'Call notes saved. Marked as "Follow up needed".' : 'Call notes saved and the order is closed — the customer decided not to proceed.');
+    header('Location: ' . url(['tab' => 'orders', 'id' => $orderId]) . '#callNotes');
+    exit;
+
 case 'payment_confirm':
     // Only the admin can say the money has arrived; the order then moves to the Design stage.
     $orderId = $int('order_id');

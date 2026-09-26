@@ -76,6 +76,8 @@ if ($orderId):
   </div>
 </div>
 
+<?php $callFlow = phase10b_ready() && !empty($o['call_status']); ?>
+<?= $callFlow ? render_call_banner($o) : '' ?>
 <?php if ($type === 'call'): ?>
   <div class="callout call">
     <?= svg('phone') ?>
@@ -213,6 +215,7 @@ if ($orderId):
     </section>
   </div>
 </div>
+<?php if (!empty($callFlow)) echo render_call_panel($o, csrf_field() . return_field(), true, 'I\'ve called them (mark as contacted)'); ?>
 <?php if (($o['contact_preference'] ?? 'self') === 'call' && phase10_ready()):
     $quote = quote_for_order($o['id']);
     if ($quote):
@@ -252,6 +255,7 @@ $f = [
     'status' => in_array($_GET['status'] ?? '', STAGES, true) ? $_GET['status'] : '',
     'type' => in_array($_GET['type'] ?? '', ['asis', 'modified', 'call'], true) ? $_GET['type'] : '',
     'review' => in_array($_GET['review'] ?? '', ['needs', 'confirmed'], true) ? $_GET['review'] : '',
+    'call' => phase10b_ready() && in_array($_GET['call'] ?? '', ['pending', 'in_progress', 'contacted', 'completed'], true) ? $_GET['call'] : '',
 ];
 $SORTS = [
     'code' => 'o.order_code', 'customer' => 'o.customer_name', 'phone' => 'o.customer_phone', 'place' => 'o.customer_state',
@@ -277,6 +281,7 @@ if ($f['type'] === 'modified') $where[] = "NOT $isCall AND NOT $noMods";
 if ($f['type'] === 'asis') $where[] = "NOT $isCall AND $noMods";
 if ($f['review'] === 'needs') $where[] = 'o.needs_manual_review = 1';
 if ($f['review'] === 'confirmed') $where[] = 'o.needs_manual_review = 0';
+if ($f['call'] !== '') { $where[] = 'o.call_status = ?'; $params[] = $f['call']; }
 $whereSql = $where ? 'WHERE ' . implode(' AND ', $where) : '';
 $from = "FROM library_orders o JOIN designs d ON d.id = o.design_id LEFT JOIN staff s ON s.id = o.assigned_to $whereSql";
 
@@ -294,15 +299,16 @@ $pill = function ($key, $value, $label) use ($f, $keep) {
 ?>
 <form class="search-bar" method="get">
   <input type="hidden" name="tab" value="orders">
-  <?php foreach (['status', 'type', 'review'] as $k): if ($f[$k] !== ''): ?><input type="hidden" name="<?= $k ?>" value="<?= h($f[$k]) ?>"><?php endif; endforeach; ?>
+  <?php foreach (['status', 'type', 'review', 'call'] as $k): if ($f[$k] !== ''): ?><input type="hidden" name="<?= $k ?>" value="<?= h($f[$k]) ?>"><?php endif; endforeach; ?>
   <input type="search" name="q" value="<?= h($f['q']) ?>" placeholder="Search by order code, customer name or phone" aria-label="Search orders">
   <button class="btn" type="submit">Search</button>
-  <?php if ($f['q'] !== '' || $f['status'] !== '' || $f['type'] !== '' || $f['review'] !== ''): ?><a class="clear" href="<?= h(url(['tab' => 'orders'])) ?>">Clear</a><?php endif; ?>
+  <?php if ($f['q'] !== '' || $f['status'] !== '' || $f['type'] !== '' || $f['review'] !== '' || $f['call'] !== ''): ?><a class="clear" href="<?= h(url(['tab' => 'orders'])) ?>">Clear</a><?php endif; ?>
 </form>
 <div class="filter-rows">
   <div><span>Status</span><?= $pill('status', '', 'All') ?><?php foreach (STAGE_LABEL as $k => $l) echo $pill('status', $k, $l); ?></div>
   <div><span>Type</span><?= $pill('type', '', 'All') . $pill('type', 'asis', 'As-is') . $pill('type', 'modified', 'Modified') . $pill('type', 'call', 'Call-back') ?></div>
   <div><span>Price</span><?= $pill('review', '', 'All') . $pill('review', 'needs', 'Needs review') . $pill('review', 'confirmed', 'Confirmed') ?></div>
+  <?php if (phase10b_ready()): ?><div><span>Call status</span><?= $pill('call', '', 'All') . $pill('call', 'pending', 'Waiting for call') . $pill('call', 'in_progress', 'Follow up') . $pill('call', 'contacted', 'Contacted') . $pill('call', 'completed', 'Declined') ?></div><?php endif; ?>
 </div>
 <p class="result-count"><?= number_format($total) ?> order<?= $total === 1 ? '' : 's' ?></p>
 

@@ -94,6 +94,10 @@ function renderOrder(o){
     preparing: ['Preparing your quotation', 'We\u2019re preparing your quotation. You\u2019ll receive it by email/SMS shortly.'],
     sent: ['Quotation sent', 'Your quotation has been sent! Check your email for the link to view and confirm it.'],
     confirmed: ['Order confirmed', 'Your order is confirmed! Our team will contact you to arrange payment.'],
+    call_pending: ['Waiting for our call', 'Our team will call you soon at ' + esc(String(o.phone || '').replace(/^(\d{5})(\d{5})$/, '$1 $2')) + '. You can expect a call within a few hours.'],
+    call_again: ['We will call again', 'Our team has spoken with you and will call again shortly.'],
+    call_done: ['Preparing your quotation', 'We\u2019re preparing your quotation based on our call. You\u2019ll receive it by email soon.'],
+    closed: ['Request closed', 'This request is closed. If you change your mind, call us on ' + CONTACT.phone + '.'],
   }[o.quote_state];
 
   $('result').innerHTML =

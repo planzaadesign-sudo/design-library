@@ -69,4 +69,5 @@ echo json_encode([
     'callback' => ($order['contact_preference'] ?? 'self') === 'call' && empty($order['quotation_id']),
     // Call-back orders: 'preparing' / 'sent' (quotation waiting) / 'confirmed' (payment pending); null = normal tracking
     'quote_state' => quote_tracking_state($order),
+    'phone' => $order['customer_phone'], // their own number, just typed in; used in "we will call you at ..."
 ]);

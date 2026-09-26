@@ -20,7 +20,9 @@ $recent = q("SELECT o.id, o.order_code, o.customer_name, o.customer_phone, o.tot
                     o.contact_preference, o.modifications, d.name AS design_name
              FROM library_orders o JOIN designs d ON d.id = o.design_id ORDER BY o.id DESC LIMIT 10")->fetchAll();
 
-$callbacks = q("SELECT o.id, o.order_code, o.customer_name, o.customer_phone, o.customer_district, o.customer_state, o.created_at, d.name AS design_name
+// With the call queue (phase 10b): every call-back order still waiting for its first call, across the whole team.
+$callQueue = phase10b_ready();
+$callbacks = $callQueue ? call_queue(null, ['pending']) : q("SELECT o.id, o.order_code, o.customer_name, o.customer_phone, o.customer_district, o.customer_state, o.created_at, d.name AS design_name
                 FROM library_orders o JOIN designs d ON d.id = o.design_id
                 WHERE o.contact_preference = 'call' AND o.status = 'new'" . (phase10_ready() ? ' AND o.quotation_id IS NULL' : '') . " ORDER BY o.id LIMIT 10")->fetchAll();
 $paymentsPending = phase10_ready() ? q("SELECT o.id, o.order_code, o.customer_name, q.confirmed_at, q.total_price FROM library_orders o
@@ -81,7 +83,20 @@ $nothingPending = !$callbacks && !$reviews && !$pendingSubs && !$overdue && !$ov
       <p class="empty">All clear &#8212; nothing is waiting for you.</p>
     <?php endif; ?>
 
-    <?php if ($callbacks): ?>
+    <?php if ($callbacks && $callQueue): ?>
+      <h3 class="pend-head">Waiting for call</h3>
+      <ul class="pend-list">
+      <?php foreach ($callbacks as $c): $late = (int)$c['waited_min'] > CALL_OVERDUE_MINUTES; ?>
+        <li class="pend call<?= $late ? ' late' : '' ?>">
+          <a class="pend-phone" href="tel:+91<?= h($c['customer_phone']) ?>"><?= svg('phone') ?><?= h(substr($c['customer_phone'], 0, 5) . ' ' . substr($c['customer_phone'], 5)) ?></a>
+          <a class="pend-main" href="<?= h(url(['tab' => 'orders', 'id' => $c['id']])) ?>#callNotes">
+            <strong><?= $late ? call_icon('warn') . ' ' : '' ?><?= h($c['customer_name']) ?> is waiting for a call about <?= h($c['design_name']) ?></strong>
+            <span>assigned to <?= h($c['staff_name'] ?: 'nobody yet') ?> &#183; requested <?= h(call_ago($c['waited_min'])) ?><?= $late ? ' &#183; more than 4 hours' : '' ?></span>
+          </a>
+        </li>
+      <?php endforeach; ?>
+      </ul>
+    <?php elseif ($callbacks): ?>
       <h3 class="pend-head">Customers waiting for a call</h3>
       <ul class="pend-list">
       <?php foreach ($callbacks as $c): ?>

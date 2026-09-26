@@ -104,6 +104,34 @@ if (!$problems && $_SERVER['REQUEST_METHOD'] === 'POST') {
         dash_redirect(['tab' => 'standardize', 'published' => $designId]);
     }
 
+    // ---- Call queue: after a call, notes, transfer (orders assigned to me; admins: any) ----
+    if (in_array($action, ['call_log', 'call_note', 'call_transfer'], true) && phase10b_ready()) {
+        $order = sim_q("SELECT * FROM library_orders WHERE id = ? AND (? = 1 OR assigned_to = ?)", [(int)($_POST['order_id'] ?? 0), $seeAll, $myId])->fetch();
+        if (!$order) { dash_flash('This order is not assigned to you.', 'err'); dash_redirect(['tab' => 'dashboard']); }
+        $me = $_SESSION['staff_name'] ?? 'Staff';
+        $toOrder = function ($hash) use ($order) { header('Location: ' . dash_url(['tab' => 'orders', 'id' => (int)$order['id']]) . $hash); exit; };
+        $fromDash = ($_POST['from'] ?? '') === 'dash';
+        if ($action === 'call_log') {
+            $next = (string)($_POST['next'] ?? '');
+            $err = call_log($order, $myId, $me, $_POST['note'] ?? '', $next);
+            if ($err) { dash_flash($err, 'err'); $fromDash ? dash_redirect(['tab' => 'dashboard']) : $toOrder('#callNotes'); }
+            if ($next === 'quote') { dash_flash('Call notes saved. Now prepare the quotation for ' . $order['customer_name'] . ' below.'); $toOrder('#quote'); }
+            if ($next === 'later') { dash_flash('Call notes saved. ' . $order['customer_name'] . ' stays on your dashboard as "Follow up needed".'); $fromDash ? dash_redirect(['tab' => 'dashboard']) : $toOrder('#callNotes'); }
+            dash_flash('Call notes saved and the order is closed — the customer decided not to proceed.');
+            $fromDash ? dash_redirect(['tab' => 'dashboard']) : $toOrder('');
+        }
+        if ($action === 'call_note') {
+            $err = call_add_note($order, $myId, $me, $_POST['note'] ?? '');
+            dash_flash($err ?: 'Note added.', $err ? 'err' : 'ok');
+            $toOrder('#callNotes');
+        }
+        $to = (int)($_POST['to_staff'] ?? 0);
+        $err = call_transfer($order, $to, $myId, $me);
+        if ($err) { dash_flash($err, 'err'); $fromDash ? dash_redirect(['tab' => 'dashboard']) : $toOrder('#callNotes'); }
+        $name = sim_q("SELECT name FROM staff WHERE id = ?", [$to])->fetchColumn();
+        dash_flash('Transferred to ' . $name . '. We have emailed them about this call.');
+        dash_redirect(['tab' => $seeAll ? 'orders' : 'dashboard'] + ($seeAll ? ['id' => (int)$order['id']] : []));
+    }
     // ---- Quotations for call-back orders (orders assigned to me; admins: any) ----
     if (in_array($action, ['quote_send', 'quote_resend', 'quote_cancel'], true) && phase10_ready()) {
         $order = sim_q("SELECT * FROM library_orders WHERE id = ? AND (? = 1 OR assigned_to = ?)", [(int)($_POST['order_id'] ?? 0), $seeAll, $myId])->fetch();
@@ -231,6 +259,15 @@ if ($tab === 'dashboard'):
                       WHERE b.created_by = ? AND b.deadline < CURDATE() AND b.status IN ('open', 'claimed', 'needs_revision')
                       ORDER BY b.deadline LIMIT 8", [$myId])->fetchAll();
 ?>
+<?php if (phase10b_ready() && ($myCalls = call_queue($myId))):
+    $team = sim_q("SELECT id, name, role FROM staff ORDER BY role = 'admin', name")->fetchAll(); ?>
+<section class="call-queue" aria-labelledby="callQueueHead">
+  <h2 id="callQueueHead"><?= dash_svg('phone') ?>Customers waiting for your call <span class="adm-count"><?= count($myCalls) ?></span></h2>
+  <div class="call-cards">
+  <?php foreach ($myCalls as $c) echo render_call_card($c, dash_csrf_field() . '<input type="hidden" name="from" value="dash">', $team, $myId, function ($id) { return dash_url(['tab' => 'orders', 'id' => (int)$id]); }); ?>
+  </div>
+</section>
+<?php endif; ?>
 <div class="stat-grid">
   <?php foreach ($stats as [$label, $value, $hint, $tone, $link]): ?>
     <a class="stat tone-<?= $tone ?>" href="<?= dh(dash_url(['tab' => $link])) ?>"><span class="stat-value"><?= number_format($value) ?></span>
@@ -300,7 +337,11 @@ elseif ($tab === 'orders' && !empty($_GET['id'])):
     <?php if (!empty($o['needs_manual_review'])): ?><span class="badge b-rust">Final price not confirmed yet</span><?php endif; ?>
     <span class="muted">Placed <?= dash_date($o['created_at'], true) ?> &#183; view only</span></div>
 </div></div>
-<?php if ($type === 'call'): ?>
+<?php $callFlow = phase10b_ready() && !empty($o['call_status']); ?>
+<?= $callFlow ? render_call_banner($o) : '' ?>
+<?php if ($callFlow && $type === 'call' && !empty($o['callback_notes'])): ?>
+  <div class="callout call"><?= dash_svg('phone') ?><div><strong>What they wrote when asking for the call:</strong><blockquote><?= nl2br(dh($o['callback_notes'])) ?></blockquote></div></div>
+<?php elseif (!$callFlow && $type === 'call'): ?>
   <div class="callout call"><?= dash_svg('phone') ?><div><strong>The customer asked for a phone call to discuss changes.</strong>
     Call <a href="tel:+91<?= dh($o['customer_phone']) ?>"><?= dh($o['customer_phone']) ?></a> to understand what they want.
     <?php if (!empty($o['callback_notes'])): ?><blockquote><?= nl2br(dh($o['callback_notes'])) ?></blockquote><?php endif; ?></div></div>
@@ -340,6 +381,7 @@ elseif ($tab === 'orders' && !empty($_GET['id'])):
   </div>
 </div>
 <?php
+    if (!empty($callFlow)) echo render_call_panel($o, dash_csrf_field(), true);
     if (($o['contact_preference'] ?? 'self') === 'call' && phase10_ready()):
         $quote = quote_for_order($o['id']);
         if ($quote):
@@ -574,5 +616,6 @@ elseif ($tab === 'password'):
     echo dash_password_form();
 endif;
 
+echo '<script src="../assets/calls.js?v=1"></script>';
 if (!empty($needBuilderJs)) echo '<script src="../assets/app.js?v=20260927a"></script><script src="../assets/quote-builder.js?v=1"></script>';
 echo dash_layout_end();

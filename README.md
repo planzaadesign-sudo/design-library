@@ -88,6 +88,8 @@ below only work once.
    Then `schema-phase10.sql`, once (quotations for call-back orders: the team
    prepares a quotation after the call, the customer confirms it at `quote.php`,
    and the admin confirms the payment).
+   Then `schema-phase10b.sql`, once (call queue: the person a call-back order is
+   given to gets an email, and the order waits on their dashboard until they call).
    If anything is missing, the admin dashboard lists exactly what to run.
 3. Fill in `config.php` with real database credentials.
 4. Upload everything except the `.sql` files into the `test` folder.

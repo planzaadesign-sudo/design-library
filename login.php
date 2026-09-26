@@ -2,7 +2,10 @@
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/auth.php';
 $pdo = getDB();
-$type = ($_POST['type'] ?? $_GET['type'] ?? 'staff') === 'freelancer' ? 'freelancer' : 'staff'; // "freelancer" stays in URLs for old links
+// Two separate sign-in pages on one script: ?type=staff (admin + in-house) or ?type=freelancer (Creator Studio).
+// No type = the Creator Studio version (public visitors are most likely Design Creators).
+$type = ($_POST['type'] ?? $_GET['type'] ?? 'freelancer') === 'staff' ? 'staff' : 'freelancer'; // "freelancer" stays in URLs for old links
+$isStaff = $type === 'staff';
 $error = '';
 $challengeError = '';
 $callout = null; // [colour, title, message HTML]
@@ -94,24 +97,26 @@ $h = function ($s) { return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Sign in &#8212; Planzaa</title>
+<title><?= $isStaff ? 'Staff sign in' : 'Creator Studio sign in' ?> &#8212; Planzaa</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/style.css?v=20260926a">
-<link rel="stylesheet" href="assets/register.css?v=3">
+<link rel="stylesheet" href="assets/register.css?v=4">
 <link rel="stylesheet" href="assets/password.css?v=1">
 </head>
-<body>
-<div class="topbar"><div class="topbar-inner"><div class="wordmark">planzaa<span>.</span> team</div></div></div>
+<body class="<?= $isStaff ? 'login-staff' : 'login-creator' ?>">
+<div class="topbar"><div class="topbar-inner"><div class="wordmark">planzaa<span>.</span> <?= $isStaff ? 'team' : 'creator studio' ?></div></div></div>
 <div class="wrap"><div class="login-box">
-  <h1>Sign in</h1>
-  <div class="login-tabs">
-    <a class="login-tab <?= $type === 'staff' ? 'active' : '' ?>" href="?type=staff">Staff</a>
-    <a class="login-tab <?= $type === 'freelancer' ? 'active' : '' ?>" href="?type=freelancer">Design Creator</a>
-  </div>
+  <?php if ($isStaff): ?>
+  <h1>Staff sign in</h1>
+  <p class="login-sub">For the Planzaa team: admin and in-house.</p>
+  <?php else: ?>
+  <h1>Creator Studio sign in</h1>
+  <p class="login-sub">Sign in to claim design briefs and send in your work.</p>
+  <?php endif; ?>
   <?php if ($callout): ?><div class="login-callout <?= $callout[0] ?>" role="alert"><strong><?= $h($callout[1]) ?></strong><?= $callout[2] ?></div><?php endif; ?>
   <?php if ($error): ?><div class="error-note" role="alert"><?= $h($error) ?></div><?php endif; ?>
   <form method="POST" action="login.php">

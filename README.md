@@ -85,6 +85,9 @@ below only work once.
    Then `schema-phase9.sql`, once (security: password rules, forced password
    change, password reset links, sign-in lockouts). It also makes the admin
    choose a new password at the next sign-in.
+   Then `schema-phase10.sql`, once (quotations for call-back orders: the team
+   prepares a quotation after the call, the customer confirms it at `quote.php`,
+   and the admin confirms the payment).
    If anything is missing, the admin dashboard lists exactly what to run.
 3. Fill in `config.php` with real database credentials.
 4. Upload everything except the `.sql` files into the `test` folder.

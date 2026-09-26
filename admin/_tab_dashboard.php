@@ -6,7 +6,7 @@ $stats = [
     ['Total orders', (int)$one("SELECT COUNT(*) FROM library_orders"), 'all time', 'accent', url(['tab' => 'orders'])],
     ['Active orders', (int)$one("SELECT COUNT(*) FROM library_orders WHERE status <> 'delivered'"), 'not delivered yet', 'accent', url(['tab' => 'orders'])],
     ['Need a price', (int)$one("SELECT COUNT(*) FROM library_orders WHERE needs_manual_review = 1 AND status <> 'delivered'"), 'manual review', 'amber', url(['tab' => 'orders', 'review' => 'needs'])],
-    ['Call-backs waiting', (int)$one("SELECT COUNT(*) FROM library_orders WHERE contact_preference = 'call' AND status = 'new'"), 'customers to call', 'rust', url(['tab' => 'orders', 'type' => 'call', 'status' => 'new'])],
+    ['Call-backs waiting', (int)$one("SELECT COUNT(*) FROM library_orders WHERE contact_preference = 'call' AND status = 'new'" . (phase10_ready() ? ' AND quotation_id IS NULL' : '')), 'customers to call', 'rust', url(['tab' => 'orders', 'type' => 'call', 'status' => 'new'])],
     ['Revenue', inr((int)$one("SELECT COALESCE(SUM(total_price), 0) FROM library_orders WHERE status = 'delivered'")), 'from delivered orders', 'green', url(['tab' => 'orders', 'status' => 'delivered'])],
     ['Published designs', (int)$one("SELECT COUNT(*) FROM designs WHERE is_active = 1"), 'visible to customers', 'green', url(['tab' => 'designs'])],
     ['Open briefs', (int)$one("SELECT COUNT(*) FROM briefs WHERE status = 'open'"), 'waiting for a Design Creator', 'accent', url(['tab' => 'briefs', 'status' => 'open'])],
@@ -22,7 +22,9 @@ $recent = q("SELECT o.id, o.order_code, o.customer_name, o.customer_phone, o.tot
 
 $callbacks = q("SELECT o.id, o.order_code, o.customer_name, o.customer_phone, o.customer_district, o.customer_state, o.created_at, d.name AS design_name
                 FROM library_orders o JOIN designs d ON d.id = o.design_id
-                WHERE o.contact_preference = 'call' AND o.status = 'new' ORDER BY o.id LIMIT 10")->fetchAll();
+                WHERE o.contact_preference = 'call' AND o.status = 'new'" . (phase10_ready() ? ' AND o.quotation_id IS NULL' : '') . " ORDER BY o.id LIMIT 10")->fetchAll();
+$paymentsPending = phase10_ready() ? q("SELECT o.id, o.order_code, o.customer_name, q.confirmed_at, q.total_price FROM library_orders o
+                  JOIN quotations q ON q.id = o.quotation_id WHERE o.payment_status <> 'received' ORDER BY q.confirmed_at LIMIT 20")->fetchAll() : [];
 $overloaded = q("SELECT o.id, o.order_code, o.customer_name, o.assignment_reason, s.name AS staff_name FROM library_orders o
                   LEFT JOIN staff s ON s.id = o.assigned_to WHERE o.overload_warning = 1 AND o.status <> 'delivered' ORDER BY o.id DESC LIMIT 10")->fetchAll();
 $reviews = q("SELECT o.id, o.order_code, o.customer_name, o.total_price, d.name AS design_name
@@ -36,7 +38,7 @@ $overdue = q("SELECT b.id, b.title, b.deadline, b.status, f.name AS freelancer_n
               WHERE b.deadline < CURDATE() AND b.status IN ('open', 'claimed')
                 AND NOT EXISTS (SELECT 1 FROM submissions s WHERE s.brief_id = b.id)
               ORDER BY b.deadline LIMIT 10")->fetchAll();
-$nothingPending = !$callbacks && !$reviews && !$pendingSubs && !$overdue && !$overloaded;
+$nothingPending = !$callbacks && !$reviews && !$pendingSubs && !$overdue && !$overloaded && !$paymentsPending;
 ?>
 <div class="stat-grid">
   <?php foreach ($stats as [$label, $value, $hint, $tone, $link]): ?>
@@ -90,6 +92,17 @@ $nothingPending = !$callbacks && !$reviews && !$pendingSubs && !$overdue && !$ov
             <span><?= h(trim($c['customer_district'] . ', ' . $c['customer_state'], ', ')) ?> &#183; <?= h($c['design_name']) ?> &#183; <?= fdate($c['created_at'], true) ?></span>
           </a>
         </li>
+      <?php endforeach; ?>
+      </ul>
+    <?php endif; ?>
+
+    <?php if ($paymentsPending): ?>
+      <h3 class="pend-head">Payment pending</h3>
+      <ul class="pend-list">
+      <?php foreach ($paymentsPending as $pp): ?>
+        <li class="pend"><a class="pend-main" href="<?= h(url(['tab' => 'orders', 'id' => $pp['id']])) ?>#quote">
+          <strong>Payment pending &#8212; <?= h($pp['customer_name']) ?> confirmed their quotation on <?= fdate($pp['confirmed_at']) ?></strong>
+          <span><?= h($pp['order_code']) ?> &#183; <?= inr($pp['total_price']) ?> &#183; open it to confirm the payment</span></a></li>
       <?php endforeach; ?>
       </ul>
     <?php endif; ?>

@@ -89,12 +89,20 @@ function renderOrder(o){
     ? 'Our design expert will call you to understand your changes. After the call, we will tell you the price.'
     : 'Your changes are big, so our team is checking them. We will call you with the exact price.';
 
+  // Call-back orders: until the payment arrives, say where the quotation is instead of showing the stages.
+  const QUOTE = {
+    preparing: ['Preparing your quotation', 'We\u2019re preparing your quotation. You\u2019ll receive it by email/SMS shortly.'],
+    sent: ['Quotation sent', 'Your quotation has been sent! Check your email for the link to view and confirm it.'],
+    confirmed: ['Order confirmed', 'Your order is confirmed! Our team will contact you to arrange payment.'],
+  }[o.quote_state];
+
   $('result').innerHTML =
     '<div class="status-card">'
     + '<div class="status-head"><div><div class="eyebrow">' + esc(o.order_code) + '</div><h2>' + esc(o.design_name) + '</h2></div>'
-    +   '<span class="badge ' + (delivered ? 'badge-match' : 'b-blue') + '">' + esc(STAGES[idx] ? STAGES[idx][1] : o.status) + '</span></div>'
-    + '<ol class="tstepper" aria-label="Order progress">' + steps + '</ol>'
-    + (o.needs_manual_review ? '<div class="note note-danger">' + icon('info') + '<span>' + reviewNote + '</span></div>' : '')
+    +   '<span class="badge ' + (delivered ? 'badge-match' : QUOTE ? 'badge-amber' : 'b-blue') + '">' + esc(QUOTE ? QUOTE[0] : STAGES[idx] ? STAGES[idx][1] : o.status) + '</span></div>'
+    + (QUOTE ? '<div class="note note-warn">' + icon(o.quote_state === 'confirmed' ? 'check' : 'info') + '<span>' + QUOTE[1] + '</span></div>'
+      : '<ol class="tstepper" aria-label="Order progress">' + steps + '</ol>'
+        + (o.needs_manual_review ? '<div class="note note-danger">' + icon('info') + '<span>' + reviewNote + '</span></div>' : ''))
     + '<dl class="details">'
     +   '<div class="drow"><dt>Design</dt><dd>' + esc(o.design_name) + '</dd></div>'
     +   (o.design_code ? '<div class="drow"><dt>Design code</dt><dd>' + esc(o.design_code) + '</dd></div>' : '')

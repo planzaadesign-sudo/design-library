@@ -2,6 +2,7 @@
 header('Content-Type: application/json');
 require_once __DIR__ . '/../db.php';
 require_once __DIR__ . '/../includes/design_utils.php';
+require_once __DIR__ . '/../includes/quotes.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
@@ -65,5 +66,7 @@ echo json_encode([
     'estimated_delivery_days' => $order['estimated_delivery_days'] === null ? null : (int)$order['estimated_delivery_days'],
     'modifications' => $modLabels,
     // true when the customer asked our design expert to call instead of picking changes
-    'callback' => ($order['contact_preference'] ?? 'self') === 'call',
+    'callback' => ($order['contact_preference'] ?? 'self') === 'call' && empty($order['quotation_id']),
+    // Call-back orders: 'preparing' / 'sent' (quotation waiting) / 'confirmed' (payment pending); null = normal tracking
+    'quote_state' => quote_tracking_state($order),
 ]);

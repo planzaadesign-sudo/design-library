@@ -213,6 +213,20 @@ if ($orderId):
     </section>
   </div>
 </div>
+<?php if (($o['contact_preference'] ?? 'self') === 'call' && phase10_ready()):
+    $quote = quote_for_order($o['id']);
+    if ($quote):
+        echo render_quote_status($quote, $o, csrf_field() . return_field(), false, true, '../quote.php?preview=' . (int)$quote['id']);
+        if (in_array($quote['status'], ['sent', 'viewed', 'expired'], true)): ?>
+  <p class="muted small-note qs-more">To resend or cancel it, <a href="../inhouse/index.php?tab=orders&amp;id=<?= (int)$o['id'] ?>#quote">open the order in the in-house view</a>.</p>
+<?php   endif;
+    else: ?>
+<section class="adm-card quote-status" id="quote">
+  <div class="qs-head"><h3>Quotation</h3><span class="badge badge-neutral">Not prepared yet</span></div>
+  <p class="muted">After the call, the team member prepares a quotation for the customer to confirm.</p>
+  <a class="btn btn-small" href="../inhouse/index.php?tab=orders&amp;id=<?= (int)$o['id'] ?>#quote">Prepare quotation</a>
+</section>
+<?php endif; endif; ?>
 <div class="detail-grid">
   <section class="adm-card" id="notes">
     <h3>Internal notes</h3>

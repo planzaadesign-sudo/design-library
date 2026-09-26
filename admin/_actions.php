@@ -363,6 +363,14 @@ case 'freelancer_reactivate':
 
 // ---- Settings -------------------------------------------------------------------------------
 // ---- Order notes and files ----------------------------------------------------------------
+case 'payment_confirm':
+    // Only the admin can say the money has arrived; the order then moves to the Design stage.
+    $orderId = $int('order_id');
+    if (!phase10_ready() || !quote_payment_received($orderId, $myId)) $fail('This order has no confirmed quotation waiting for payment.', ['tab' => 'orders', 'id' => $orderId]);
+    flash('Payment confirmed. The order has moved to the Design stage.');
+    header('Location: ' . url(['tab' => 'orders', 'id' => $orderId]) . '#quote');
+    exit;
+
 case 'order_note':
     $orderId = $int('order_id');
     $note = $str('note');

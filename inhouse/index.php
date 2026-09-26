@@ -4,6 +4,7 @@ require_once __DIR__ . '/../auth.php';
 requireStaff('inhouse'); // admins can open this page too (auth.php allows it)
 require_once __DIR__ . '/../includes/dashboard.php';
 require_once __DIR__ . '/../includes/design_ui.php';
+require_once __DIR__ . '/../includes/quote_ui.php';
 
 $pdo = getDB();
 $myId = (int)$_SESSION['staff_id'];
@@ -103,6 +104,53 @@ if (!$problems && $_SERVER['REQUEST_METHOD'] === 'POST') {
         dash_redirect(['tab' => 'standardize', 'published' => $designId]);
     }
 
+    // ---- Quotations for call-back orders (orders assigned to me; admins: any) ----
+    if (in_array($action, ['quote_send', 'quote_resend', 'quote_cancel'], true) && phase10_ready()) {
+        $order = sim_q("SELECT * FROM library_orders WHERE id = ? AND (? = 1 OR assigned_to = ?)", [(int)($_POST['order_id'] ?? 0), $seeAll, $myId])->fetch();
+        if (!$order) { dash_flash('This order is not assigned to you.', 'err'); dash_redirect(['tab' => 'orders']); }
+        $back = function (array $extra = []) use ($order) { header('Location: ' . dash_url(array_merge(['tab' => 'orders', 'id' => (int)$order['id']], $extra)) . '#quote'); exit; };
+        if (($order['contact_preference'] ?? 'self') !== 'call') { dash_flash('Quotations are only for call-back orders.', 'err'); $back(); }
+        if ($action === 'quote_send') {
+            $keep = (int)($_POST['design_id'] ?? 0) !== (int)$order['design_id'] ? ['qdesign' => (int)($_POST['design_id'] ?? 0)] : [];
+            $design = sim_q("SELECT * FROM designs WHERE id = ? AND is_active = 1", [(int)($_POST['design_id'] ?? 0)])->fetch();
+            if (!$design) { dash_flash('That design is not available any more. Please pick another one.', 'err'); $back(); }
+            $cfg = json_decode((string)($_POST['config'] ?? ''), true);
+            if (!is_array($cfg)) { dash_flash('Please pick the changes again and send once more.', 'err'); $back($keep); }
+            // The server works out every price again; nothing about prices is taken from the browser.
+            [$priced, $err] = quote_price($design, (array)($cfg['modifications'] ?? []), (array)($cfg['modification_details'] ?? []), !empty($cfg['structural']));
+            $notes = trim((string)($_POST['notes_for_customer'] ?? ''));
+            $internal = trim((string)($_POST['internal_notes'] ?? ''));
+            $email = strtolower(trim((string)($_POST['customer_email'] ?? '')));
+            if (!$err && (mb_strlen($notes) > 3000 || mb_strlen($internal) > 3000)) $err = 'Please keep the notes shorter.';
+            if (!$err && $email !== '' && (!filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($email) > 150)) $err = 'Please check the customer\'s email address (or leave it empty).';
+            if ($err) { dash_flash($err, 'err'); $back($keep); }
+            [$qid, $link, $err] = quote_create($order, $design, $priced, $myId, $notes, $internal, $email);
+            if ($err) { dash_flash($err, 'err'); $back(); }
+            if ($internal !== '') add_order_note($order['id'], $myId, $_SESSION['staff_name'] ?? 'Staff', 'Quotation note: ' . $internal);
+            $q = sim_q("SELECT * FROM quotations WHERE id = ?", [$qid])->fetch();
+            $mailed = $email !== '' && quote_email_customer($q, $order, $design, $link);
+            $_SESSION['quote_link'][$qid] = $link; // shown once on the next page, never stored
+            dash_flash('Quotation sent to ' . $order['customer_name'] . ' at ' . $order['customer_phone'] . '.'
+                . ($email === '' ? ' Send them the link below on WhatsApp or SMS so they can view and confirm it.'
+                    : ($mailed ? ' We emailed the link to ' . $email . '. You can also send it on WhatsApp below.' : ' The email to ' . $email . ' could not be sent — please send the link below on WhatsApp or SMS.')));
+            $back();
+        }
+        $q = sim_q("SELECT * FROM quotations WHERE id = ? AND order_id = ?", [(int)($_POST['quote_id'] ?? 0), (int)$order['id']])->fetch();
+        if (!$q) { dash_flash('Quotation not found.', 'err'); $back(); }
+        if ($action === 'quote_resend') {
+            $link = quote_resend($q['id']);
+            if (!$link) { dash_flash('This quotation cannot be resent (it was confirmed or cancelled).', 'err'); $back(); }
+            $q = sim_q("SELECT * FROM quotations WHERE id = ?", [(int)$q['id']])->fetch();
+            $design = sim_q("SELECT * FROM designs WHERE id = ?", [(int)$q['design_id']])->fetch();
+            $mailed = !empty($q['customer_email']) && quote_email_customer($q, $order, $design, $link);
+            $_SESSION['quote_link'][(int)$q['id']] = $link;
+            dash_flash('Quotation resent with a new link that works for 7 more days. The old link no longer works.' . ($mailed ? ' We emailed it to ' . $q['customer_email'] . '.' : ''));
+            $back();
+        }
+        $ok = quote_cancel($q['id']);
+        dash_flash($ok ? 'Quotation cancelled. You can prepare a new one below.' : 'This quotation cannot be cancelled any more.', $ok ? 'ok' : 'err');
+        $back();
+    }
     // ---- Order notes and files (only orders assigned to me) ----
     if ($action === 'order_note' || $action === 'order_file') {
         $order = sim_q("SELECT id, order_code FROM library_orders WHERE id = ? AND (? = 1 OR assigned_to = ?)", [(int)($_POST['order_id'] ?? 0), $seeAll, $myId])->fetch();
@@ -291,6 +339,22 @@ elseif ($tab === 'orders' && !empty($_GET['id'])):
       <?= render_assignment_note($o) ?></section>
   </div>
 </div>
+<?php
+    if (($o['contact_preference'] ?? 'self') === 'call' && phase10_ready()):
+        $quote = quote_for_order($o['id']);
+        if ($quote):
+            $link = $_SESSION['quote_link'][(int)$quote['id']] ?? null;
+            unset($_SESSION['quote_link'][(int)$quote['id']]);
+            echo render_quote_status($quote, $o, dash_csrf_field(), true, false, '../quote.php?preview=' . (int)$quote['id'], $link);
+        else:
+            $qd = (int)($_GET['qdesign'] ?? 0);
+            $qDesign = $qd ? sim_q("SELECT * FROM designs WHERE id = ? AND is_active = 1", [$qd])->fetch() : null;
+            if (!$qDesign) $qDesign = sim_q("SELECT * FROM designs WHERE id = ?", [(int)$o['design_id']])->fetch();
+            echo render_quote_builder($o, $qDesign, dash_csrf_field(), ['tab' => 'orders', 'id' => (int)$o['id']], 'dash_url', '../api/', (int)$qDesign['id'] === (int)$o['design_id']);
+            $needBuilderJs = true;
+        endif;
+    endif;
+?>
 <div class="detail-grid">
   <section class="adm-card" id="notes">
     <h3>Internal notes</h3>
@@ -510,4 +574,5 @@ elseif ($tab === 'password'):
     echo dash_password_form();
 endif;
 
+if (!empty($needBuilderJs)) echo '<script src="../assets/app.js?v=20260927a"></script><script src="../assets/quote-builder.js?v=1"></script>';
 echo dash_layout_end();

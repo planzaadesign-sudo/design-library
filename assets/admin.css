@@ -332,3 +332,42 @@ tr.open td{background:var(--accent-soft) !important;}
 .lock-list li span{font-size:12px;}
 .lock-list form{margin:0;}
 .form-grid-adm.one .pw-help{margin:0;}
+
+/* ---- Quotations (in-house builder + status card; admin status card) ---- */
+.quote-builder .step-label{display:flex; align-items:center; gap:10px; margin:18px 0 10px;}
+.quote-builder .step-label h4{margin:0; font-size:15px;}
+.qb-design{display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; padding:12px 14px; border:1px solid var(--border); border-radius:10px; background:var(--surface-2);}
+.qb-design .muted{font-size:13px; margin-top:2px;}
+.qb-search{margin:10px 0 4px;}
+.qb-search > summary{cursor:pointer; color:var(--accent); font-weight:600; font-size:14px; width:max-content;}
+.qb-search-form{display:flex; flex-wrap:wrap; align-items:flex-end; gap:10px; margin:10px 0;}
+.qb-search-form label{display:flex; flex-direction:column; gap:4px; font-size:12px; font-weight:600; color:var(--text-secondary);}
+.qb-search-form input{min-width:220px;}
+.qb-results{list-style:none; margin:0; padding:0; border:1px solid var(--border); border-radius:10px; overflow:hidden;}
+.qb-results li{display:grid; grid-template-columns:auto minmax(0,1fr) auto auto auto; align-items:center; gap:4px 12px; padding:9px 12px; border-bottom:1px solid var(--border); font-size:14px;}
+.qb-results li:last-child{border-bottom:none;}
+.qb-results li .muted{grid-column:2 / 3; font-size:12px;}
+@media (max-width:700px){.qb-results li{grid-template-columns:1fr auto;} .qb-results li .muted{grid-column:1 / -1;}}
+.qb-layout{margin-top:6px; grid-template-columns:minmax(0,1fr) 320px; gap:22px;}
+@media (max-width:1100px){.qb-layout{grid-template-columns:minmax(0,1fr);}}
+.qb-summary{position:sticky; top:16px;}
+.qb-summary h3{margin:0 0 10px;}
+.qb-form{margin-top:14px; padding-top:14px; border-top:1px solid var(--border);}
+.qb-form label{display:block; margin:10px 0 4px; font-size:13px; font-weight:600;}
+.qb-form label .muted{font-weight:400;}
+.qb-form textarea, .qb-form input[type=email]{width:100%; font:inherit; font-size:14px;}
+.btn-send{display:block; width:100%; margin-top:14px; padding:14px !important; font-size:16px !important; font-weight:700 !important; background:var(--success) !important; border-color:var(--success) !important; color:#fff !important; border-radius:10px !important;}
+.btn-send:hover{filter:brightness(1.08);}
+.btn-send[disabled]{opacity:.5; cursor:not-allowed;}
+.quote-status .qs-head{display:flex; align-items:center; gap:10px; margin-bottom:6px;}
+.quote-status .qs-head h3{margin:0;}
+.quote-status.status-confirmed{border-left:5px solid var(--success);}
+.quote-status.status-expired{border-left:5px solid var(--attention);}
+.quote-status.status-sent, .quote-status.status-viewed{border-left:5px solid var(--accent);}
+.qs-link{margin:12px 0; padding:12px; border:1px dashed var(--accent); border-radius:10px; background:var(--accent-soft);}
+.qs-link label{display:block; margin-bottom:6px; font-size:13px; font-weight:600;}
+.qs-link-row{display:flex; gap:8px; flex-wrap:wrap;}
+.qs-link-row input{flex:1 1 260px; min-width:0; font-size:13px;}
+.qs-actions{flex-wrap:wrap; gap:8px;}
+.qs-actions form{margin:0;}
+.qs-more{margin:-10px 0 18px;}

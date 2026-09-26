@@ -98,13 +98,15 @@ function stage_badge($s) {
     return '<span class="badge ' . $cls . '">' . h(STAGE_LABEL[$s] ?? $s) . '</span>';
 }
 function order_type($o) {
-    if (($o['contact_preference'] ?? 'self') === 'call') return 'call';
+    // A call-back order becomes a normal order once the customer confirms its quotation.
+    if (($o['contact_preference'] ?? 'self') === 'call' && empty($o['quotation_id'])) return 'call';
     $m = trim((string)($o['modifications'] ?? ''));
     return ($m !== '' && $m !== '[]') ? 'modified' : 'asis';
 }
 function type_badge($o) {
     $t = order_type($o);
     if ($t === 'call') return '<span class="badge b-amber">Call-back</span>';
+    if (!empty($o['quotation_id'])) return '<span class="badge b-blue">Quoted</span>';
     if ($t === 'modified') return '<span class="badge b-blue">Modified</span>';
     return '<span class="badge badge-neutral">As-is</span>';
 }
@@ -201,6 +203,9 @@ function schema_problems() {
     }
     if (!phase7_ready()) {
         $problems[] = 'Design codes, design files and auto-assignment need the database update &#8212; run schema-phase7.sql.';
+    }
+    if (!phase10_ready()) {
+        $problems[] = 'Quotations for call-back orders need the database update &#8212; run schema-phase10.sql.';
     }
     if (!security_ready()) {
         $problems[] = 'Password rules, sign-in protection and password reset need the database update &#8212; run schema-phase9.sql.';

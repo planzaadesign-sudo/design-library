@@ -1,0 +1,88 @@
+/* Customer quotation page (quote.php): an invoice-like white card on the warm paper background. */
+
+.quote-wrap{width:100%; max-width:760px; margin:0 auto; padding:28px 16px 48px;}
+.quote-brand{display:flex; justify-content:space-between; align-items:baseline; gap:12px; margin-bottom:18px;}
+.quote-brand .brand{font-size:28px;}
+.quote-kicker{font-size:13px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--text-muted);}
+.quote-preview-bar{margin-bottom:14px; padding:10px 14px; border:1px dashed var(--accent); border-radius:8px; background:var(--accent-soft); font-size:14px;}
+
+.quote-card{background:#fff; color:#241F17; border:1px solid var(--border); border-radius:14px; box-shadow:var(--shadow-md);}
+[data-mode="dark"] .quote-card{background:var(--surface); color:var(--text);}
+@media (prefers-color-scheme: dark){:root:not([data-mode]) .quote-card{background:var(--surface); color:var(--text);}}
+.quote-msg{padding:32px 26px; text-align:center;}
+.quote-msg h1{font-size:24px; margin-bottom:8px;}
+.quote-msg a, .quote-fine a, .quote-done a:not(.btn){color:var(--accent); font-weight:600;}
+.quote-done{padding:36px 24px 30px; text-align:center;}
+.quote-done .check-anim{width:96px; height:96px;}
+.quote-done .lead{margin:6px 0; font-size:16px;}
+.quote-done .code{font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing:.04em;}
+.quote-done .cta-row{justify-content:center; margin-top:18px;}
+
+.quote-doc{padding:30px 32px 22px;}
+.quote-top{display:flex; justify-content:space-between; align-items:flex-start; gap:18px; flex-wrap:wrap; padding-bottom:18px; border-bottom:2px solid var(--text);}
+.quote-top h1{font-size:clamp(24px,4.5vw,30px); line-height:1.15; letter-spacing:-.02em;}
+.quote-for{margin:6px 0 0; color:var(--text-secondary);}
+.quote-meta{display:grid; gap:4px; margin:0; font-size:13px; text-align:right;}
+.quote-meta div{display:flex; justify-content:flex-end; gap:10px;}
+.quote-meta dt{color:var(--text-muted);}
+.quote-meta dd{margin:0; font-weight:600;}
+
+.quote-sec{padding:20px 0; border-bottom:1px solid var(--border);}
+.quote-sec h2{margin:0 0 12px; font-size:13px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--text-muted);}
+.quote-design{display:grid; grid-template-columns:220px minmax(0,1fr); gap:20px; align-items:start;}
+.quote-art{display:grid; gap:8px;}
+.quote-art img{width:100%; border-radius:8px; border:1px solid var(--border); background:var(--surface-2); object-fit:cover; max-height:160px;}
+.art-sketch{padding:10px; border:1px solid var(--border); border-radius:8px; background:var(--surface-2); color:var(--text-secondary);}
+.quote-design h3{font-size:20px; margin:0;}
+.quote-code{margin:4px 0 10px; font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size:13px; color:var(--text-secondary);}
+.quote-facts{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px 16px; margin:0;}
+.quote-facts dt{font-size:12px; color:var(--text-muted);}
+.quote-facts dd{margin:0; font-weight:600;}
+
+.quote-list, .quote-changes{list-style:none; margin:0; padding:0;}
+.quote-list li{position:relative; padding:5px 0 5px 26px; line-height:1.5;}
+.quote-list li::before{position:absolute; left:0; top:5px; width:18px; height:18px; border-radius:50%; font-size:12px; line-height:18px; text-align:center; font-weight:700;}
+.quote-list li.yes::before{content:"✓"; background:var(--success-soft); color:var(--success);}
+.quote-list li.no::before{content:"✕"; background:var(--attention-soft); color:var(--attention);}
+.quote-changes > li{padding:8px 0; border-bottom:1px dashed var(--border);}
+.quote-changes > li:last-child{border-bottom:none;}
+.quote-changes ul{margin:4px 0 0; padding-left:18px; color:var(--text-secondary); font-size:14px; line-height:1.55;}
+.quote-notes{margin:0; padding:12px 16px; border-left:4px solid var(--accent); border-radius:0 8px 8px 0; background:var(--accent-soft); line-height:1.6;}
+
+.quote-prices{width:100%; border-collapse:collapse; font-size:15px;}
+.quote-prices td, .quote-prices th{padding:9px 0; border-bottom:1px solid var(--border); text-align:left; vertical-align:top;}
+.quote-prices .amt{text-align:right; white-space:nowrap; padding-left:16px; font-variant-numeric:tabular-nums;}
+.quote-prices tfoot th, .quote-prices tfoot td{border-top:2px solid var(--text); border-bottom:none; padding-top:14px;}
+.quote-prices tfoot th{font-size:18px;}
+.quote-prices .total{font-family:'Space Grotesk',sans-serif; font-size:clamp(26px,5vw,32px); font-weight:700; letter-spacing:-.02em;}
+.quote-estimate{margin:12px 0 0; padding:10px 12px; border-radius:8px; background:var(--amber-soft, #F6E7CF); font-size:14px;}
+.quote-delivery{margin:12px 0 0; color:var(--text-secondary);}
+
+.quote-action{padding:24px 0 8px; text-align:center;}
+.btn-confirm{width:100%; min-height:60px; padding:16px; border:0; border-radius:10px; background:var(--success); color:#fff; font:inherit; font-size:18px; font-weight:700; cursor:pointer; box-shadow:0 6px 18px rgba(75,107,58,.28); transition:transform 150ms ease, filter 150ms ease;}
+.btn-confirm:hover{filter:brightness(1.08); transform:translateY(-1px);}
+.btn-confirm:focus-visible{outline:3px solid var(--accent); outline-offset:3px;}
+.btn-confirm[disabled]{opacity:.8; cursor:progress; transform:none;}
+.quote-fine{margin:10px 0 0; font-size:13px; color:var(--text-secondary);}
+.quote-foot{margin-top:18px; padding-top:12px; border-top:1px solid var(--border); font-size:12px; color:var(--text-muted); text-align:center;}
+.quote-print{text-align:center; margin-top:16px;}
+
+@media (max-width:600px){
+  .quote-doc{padding:22px 18px 16px;}
+  .quote-design{grid-template-columns:1fr;}
+  .quote-meta{text-align:left;} .quote-meta div{justify-content:flex-start;}
+}
+
+/* Printed (or saved as PDF): a plain quotation document. */
+@media print{
+  @page{margin:16mm;}
+  body.quote-body{background:#fff !important; color:#000;}
+  .quote-wrap{max-width:none; padding:0;}
+  .quote-card{border:none; box-shadow:none; background:#fff !important; color:#000 !important;}
+  .quote-doc{padding:0;}
+  .quote-action, .quote-print, .quote-preview-bar, .confetti{display:none !important;}
+  .quote-sec{break-inside:avoid;}
+  .quote-notes{background:none; border-left-color:#000;}
+  a{color:#000 !important; text-decoration:none;}
+  .page-enter{animation:none !important;}
+}

@@ -279,7 +279,7 @@ tr.open td{background:var(--accent-soft) !important;}
   .history li{flex-direction:column; gap:2px;}
 }
 
-/* ---- Designer registrations (admin Freelancers tab) ---- */
+/* ---- Design Creator registrations (admin Design Creators tab) ---- */
 .pending-block{margin-bottom:22px;}
 .pending-block > h2{margin:0 0 2px; font-size:19px;}
 .pending-block > p{margin:0 0 14px; font-size:14px;}
@@ -314,7 +314,7 @@ tr.open td{background:var(--accent-soft) !important;}
 .fpill .pill-n{display:inline-block; min-width:18px; margin-left:2px; padding:0 5px; border-radius:99px; background:var(--surface-2); color:var(--text-secondary); font-size:11px; text-align:center;}
 .fpill.on .pill-n{background:rgba(255,255,255,.22); color:inherit;}
 
-/* ---- Designer profile form (freelancer dashboard) ---- */
+/* ---- Design Creator profile form (Creator Studio) ---- */
 .form-grid-adm .span-all{grid-column:1 / -1;}
 .form-grid-adm textarea{width:100%; min-height:130px; font:inherit; font-size:14px; line-height:1.5;}
 .form-grid-adm input.invalid, .form-grid-adm select.invalid, .form-grid-adm textarea.invalid{border-color:var(--attention) !important;}
@@ -322,3 +322,13 @@ tr.open td{background:var(--accent-soft) !important;}
 .form-grid-adm input[readonly]{background:var(--surface-2); color:var(--text-secondary); cursor:not-allowed;}
 .form-grid-adm small a{color:var(--accent);}
 @media (max-width:560px){.profile-kv{grid-template-columns:1fr; gap:2px 0;} .profile-kv dd{margin-bottom:8px;}}
+
+/* ---- Settings: Security ---- */
+#security h3{margin:0 0 8px; font-size:15px;}
+#security .sec-sub{margin-top:22px;}
+.lock-list{list-style:none; margin:0 0 12px; padding:0;}
+.lock-list li{display:flex; justify-content:space-between; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--border);}
+.lock-list li > div{display:flex; flex-direction:column; min-width:0; font-size:14px;}
+.lock-list li span{font-size:12px;}
+.lock-list form{margin:0;}
+.form-grid-adm.one .pw-help{margin:0;}

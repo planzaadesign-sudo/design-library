@@ -8,7 +8,7 @@ function fl_status_badge($status) {
     return '<span class="badge ' . $cls . '">' . h(FREELANCER_STATUS[$status] ?? $status) . '</span>';
 }
 
-// Everything the designer told us about themselves (read-only: the profile is theirs to edit).
+// Everything the Design Creator told us about themselves (read-only: the profile is theirs to edit).
 function fl_profile_list(array $f) {
     $link = $f['portfolio_link'] ? '<a class="btn btn-small portfolio-btn" href="' . h($f['portfolio_link']) . '" target="_blank" rel="noopener noreferrer">Open portfolio &#8599;</a> <span class="muted small break">' . h($f['portfolio_link']) . '</span>' : '<span class="muted">Not provided</span>';
     return '<dl class="kv profile-kv">'
@@ -21,7 +21,7 @@ function fl_profile_list(array $f) {
         . '<dt>Registered</dt><dd>' . fdate($f['created_at'], true) . '</dd>'
         . '</dl>'
         . '<h4 class="about-h">About them</h4>'
-        . ($f['about_me'] ? '<p class="about-text">' . nl2br(h($f['about_me'])) . '</p>' : '<p class="muted">Added by the admin before designers could register, so there is no profile text.</p>');
+        . ($f['about_me'] ? '<p class="about-text">' . nl2br(h($f['about_me'])) . '</p>' : '<p class="muted">Added by the admin before Design Creators could register, so there is no profile text.</p>');
 }
 
 // Approve (green) and Reject (red). The reason box only opens when Reject is clicked.
@@ -46,7 +46,7 @@ function fl_review_actions(array $f) {
 if ($fid):
     $fr = q("SELECT f.*, st.name AS reviewer_name FROM freelancers f LEFT JOIN staff st ON st.id = f.reviewed_by WHERE f.id = ?", [$fid])->fetch();
     if (!$fr):
-        echo '<div class="adm-card"><p>Freelancer not found. <a href="' . h(url(['tab' => 'freelancers'])) . '">Back to freelancers</a></p></div>';
+        echo '<div class="adm-card"><p>Design Creator not found. <a href="' . h(url(['tab' => 'freelancers'])) . '">Back to Design Creators</a></p></div>';
         return;
     endif;
     $briefs = q("SELECT * FROM briefs WHERE claimed_by = ? ORDER BY id DESC", [$fid])->fetchAll();
@@ -56,9 +56,9 @@ if ($fid):
                   FROM designs d JOIN submissions s ON s.id = d.source_submission_id
                   WHERE s.freelancer_id = ? ORDER BY d.id DESC", [$fid])->fetchAll();
 ?>
-<a class="back-link" href="<?= h(url(['tab' => 'freelancers'])) ?>">&larr; All freelancers</a>
+<a class="back-link" href="<?= h(url(['tab' => 'freelancers'])) ?>">&larr; All Design Creators</a>
 <div class="detail-head"><div>
-  <div class="eyebrow">Freelancer</div>
+  <div class="eyebrow">Design Creator</div>
   <h2 class="detail-title"><?= h($fr['name']) ?></h2>
   <div class="detail-sub"><?= fl_status_badge($fr['status']) ?> <?= h($fr['email']) ?> <span class="muted">&#183; joined <?= fdate($fr['created_at']) ?></span></div>
 </div></div>
@@ -103,7 +103,7 @@ if ($fid):
     <section class="adm-card">
       <h3>Profile</h3>
       <?= fl_profile_list($fr) ?>
-      <p class="muted small-note">Only the designer can change their profile (from their own dashboard).</p>
+      <p class="muted small-note">Only the Design Creator can change their profile (from their Creator Studio).</p>
     </section>
     <section class="adm-card">
       <h3>Claimed briefs</h3>
@@ -159,7 +159,7 @@ $pill = function ($value, $label, $n) use ($filter) {
 <?php if ($pending && ($filter === '' || $filter === 'pending')): ?>
 <section class="pending-block" aria-labelledby="pendingHead">
   <h2 id="pendingHead"><?= count($pending) ?> new registration<?= count($pending) === 1 ? '' : 's' ?> waiting for review</h2>
-  <p class="muted">Approve a designer to let them sign in and claim briefs. They get an email either way.</p>
+  <p class="muted">Approve a Design Creator to let them sign in and claim briefs. They get an email either way.</p>
   <?php foreach ($pending as $p): ?>
   <article class="adm-card pending-card" id="fl<?= (int)$p['id'] ?>">
     <div class="pending-top">
@@ -178,32 +178,33 @@ $pill = function ($value, $label, $n) use ($filter) {
     <?= $pill('', 'All', array_sum($statusCounts)) ?>
     <?php foreach (['pending' => 'Pending', 'active' => 'Active', 'rejected' => 'Rejected', 'suspended' => 'Suspended'] as $k => $label) echo $pill($k, $label, $statusCounts[$k]); ?>
   </div>
-  <a class="btn btn-primary" href="<?= h(url(['tab' => 'freelancers', 'new' => 1])) ?>#flForm">+ Add freelancer</a>
+  <a class="btn btn-primary" href="<?= h(url(['tab' => 'freelancers', 'new' => 1])) ?>#flForm">+ Add Design Creator</a>
 </div>
 
 <?php if ($adding): ?>
 <section class="adm-card form-card" id="flForm">
-  <h2>Add a freelancer</h2>
-  <p class="muted small-note">Designers can also register themselves at <a href="../register.php" target="_blank" rel="noopener">register.php</a>. Accounts you add here are active straight away.</p>
+  <h2>Add a Design Creator</h2>
+  <p class="muted small-note">Design Creators can also register themselves at <a href="../register.php" target="_blank" rel="noopener">register.php</a>. Accounts you add here are active straight away.</p>
   <form method="post" data-saving autocomplete="off">
     <?= csrf_field() ?><?= return_field() ?>
     <input type="hidden" name="action" value="freelancer_add">
     <div class="form-grid-adm">
       <label>Name<input name="name" required maxlength="100" value="<?= h(old('name')) ?>"></label>
       <label>Email<input name="email" type="email" required maxlength="150" value="<?= h(old('email')) ?>"></label>
-      <label>Password<input name="password" type="password" required minlength="8" autocomplete="new-password"><small>At least 8 characters.</small></label>
-      <label>Type the password again<input name="password2" type="password" required minlength="8" autocomplete="new-password"></label>
+      <label>Password<input id="crPw" name="password" type="password" required minlength="<?= PASSWORD_MIN_LENGTH ?>" maxlength="200" autocomplete="new-password"></label>
+      <label>Type the password again<input id="crPw2" name="password2" type="password" required maxlength="200" autocomplete="new-password"></label>
     </div>
+    <?= password_rules_html('crPw', 'crPw2') ?>
     <div class="adm-actions">
       <a class="btn" href="<?= h(url(['tab' => 'freelancers'])) ?>">Cancel</a>
-      <button class="btn btn-primary" type="submit">Add freelancer</button>
+      <button class="btn btn-primary" type="submit">Add Design Creator</button>
     </div>
   </form>
 </section>
 <?php endif; ?>
 
 <?php if (!$list): ?>
-  <div class="adm-card"><p class="empty"><?= $filter ? 'No ' . h(strtolower(FREELANCER_STATUS[$filter])) . ' freelancers.' : 'No freelancers yet.' ?></p></div>
+  <div class="adm-card"><p class="empty"><?= $filter ? 'No ' . h(strtolower(FREELANCER_STATUS[$filter])) . ' Design Creators.' : 'No Design Creators yet.' ?></p></div>
 <?php else: ?>
 <div class="table-wrap"><table class="adm-table">
   <thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>City</th><th>Qualification</th><th>Experience</th><th>Status</th><th>Joined</th><th>Actions</th></tr></thead>

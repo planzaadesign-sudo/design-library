@@ -1,4 +1,4 @@
-/* Expanded brief form, similarity warnings and comparisons (admin, in-house and freelancer dashboards). */
+/* Expanded brief form, similarity warnings and comparisons (admin, in-house and Creator Studio). */
 .bf{max-width:880px;}
 .bf-title{display:flex; flex-direction:column; gap:6px; margin-bottom:18px; font-weight:600;}
 .bf-section{margin:0 0 18px; padding:18px 20px; border:1px solid var(--border); border-radius:12px; background:var(--surface);}
@@ -98,7 +98,7 @@
 .bf-field.reason{margin:10px 0 6px;}
 .is-locked{opacity:.55;}
 
-/* Freelancer: similar library designs for a claimed brief */
+/* Creator Studio: similar library designs for a claimed brief */
 .fl-sim{margin-top:14px;}
 .fl-sim h4{margin:0 0 8px; font-size:15px;}
 .fl-warn{margin:0 0 12px; padding:12px 14px; border:1px solid var(--attention); border-left:4px solid var(--attention); border-radius:8px; background:var(--attention-soft); color:var(--text); font-size:14px; font-weight:500;}

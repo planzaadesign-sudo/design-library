@@ -37,7 +37,7 @@
       if(notes && !notes.value.trim()){
         e.preventDefault();
         notes.focus();
-        notes.setAttribute('placeholder', 'Please write what the freelancer should fix.');
+        notes.setAttribute('placeholder', 'Please write what the Design Creator should fix.');
         return;
       }
     }

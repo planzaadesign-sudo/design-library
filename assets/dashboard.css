@@ -1,4 +1,4 @@
-/* In-house and designer dashboards. Builds on admin.css (sidebar, stats, tables, forms)
+/* In-house dashboard and Creator Studio. Builds on admin.css (sidebar, stats, tables, forms)
    and brief-form.css (similarity panels). Motion uses transform/opacity only. */
 .dash-page{animation:fadeInUp 450ms ease-out both;}
 .welcome{margin:-6px 0 16px; color:var(--text-secondary);}

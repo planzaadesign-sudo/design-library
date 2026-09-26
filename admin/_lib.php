@@ -202,8 +202,11 @@ function schema_problems() {
     if (!phase7_ready()) {
         $problems[] = 'Design codes, design files and auto-assignment need the database update &#8212; run schema-phase7.sql.';
     }
+    if (!security_ready()) {
+        $problems[] = 'Password rules, sign-in protection and password reset need the database update &#8212; run schema-phase9.sql.';
+    }
     if (!phase8_ready()) {
-        $problems[] = 'Designer registration and approval need the database update &#8212; run schema-phase8.sql.';
+        $problems[] = 'Design Creator registration and approval need the database update &#8212; run schema-phase8.sql.';
     }
     if (!phase5_ready()) {
         $problems[] = 'The design similarity columns (plot shape, main door, stairs, style&#8230;) are missing &#8212; run schema-phase5.sql.';
@@ -229,7 +232,7 @@ function detail_text(array $d, $kind) {
     return $room ? '<strong>' . h($room) . '</strong> &#8212; ' . h($what) : h($what);
 }
 
-// Review box for one freelancer submission (used on the brief and submission pages).
+// Review box for one Design Creator submission (used on the brief and submission pages).
 function review_block(array $s) {
     // Brief parameters + the 3 closest library designs, for the side-by-side check.
     $brief = brief_params($s['brief_id']);
@@ -239,14 +242,14 @@ function review_block(array $s) {
         . '<div class="review-top"><div><strong>' . h($s['freelancer_name']) . '</strong> <span class="muted">submitted ' . fdate($s['submitted_at'], true) . '</span></div>'
         . review_badge($s) . '</div>'
         . '<div class="review-file">' . $file . '</div>';
-    if ($s['notes']) $html .= '<p class="note-text"><span class="muted">Freelancer note:</span> ' . nl2br(h($s['notes'])) . '</p>';
+    if ($s['notes']) $html .= '<p class="note-text"><span class="muted">Creator&#8217;s note:</span> ' . nl2br(h($s['notes'])) . '</p>';
     if ($s['review_notes']) $html .= '<p class="note-text"><span class="muted">Review notes' . ($s['reviewer_name'] ? ' by ' . h($s['reviewer_name']) : '') . ':</span> ' . nl2br(h($s['review_notes'])) . '</p>';
     if ($s['review_status'] === 'pending') {
         $html .= $sim['html'];
         $html .= '<form method="post" class="review-form" data-saving>' . csrf_field() . return_field()
             . '<input type="hidden" name="action" value="sub_review"><input type="hidden" name="submission_id" value="' . (int)$s['id'] . '">'
             . render_review_extras($sim['matches'])
-            . '<label for="rn' . (int)$s['id'] . '">Notes for the freelancer <span class="muted">(needed when sending back)</span></label>'
+            . '<label for="rn' . (int)$s['id'] . '">Notes for the Design Creator <span class="muted">(needed when sending back)</span></label>'
             . '<textarea id="rn' . (int)$s['id'] . '" name="review_notes" rows="3" maxlength="2000"></textarea>'
             . '<div class="adm-actions left">'
             . '<button class="btn btn-primary" name="outcome" value="approve" data-needs-confirm>Approve</button>'

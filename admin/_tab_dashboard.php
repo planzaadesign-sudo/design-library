@@ -9,8 +9,8 @@ $stats = [
     ['Call-backs waiting', (int)$one("SELECT COUNT(*) FROM library_orders WHERE contact_preference = 'call' AND status = 'new'"), 'customers to call', 'rust', url(['tab' => 'orders', 'type' => 'call', 'status' => 'new'])],
     ['Revenue', inr((int)$one("SELECT COALESCE(SUM(total_price), 0) FROM library_orders WHERE status = 'delivered'")), 'from delivered orders', 'green', url(['tab' => 'orders', 'status' => 'delivered'])],
     ['Published designs', (int)$one("SELECT COUNT(*) FROM designs WHERE is_active = 1"), 'visible to customers', 'green', url(['tab' => 'designs'])],
-    ['Open briefs', (int)$one("SELECT COUNT(*) FROM briefs WHERE status = 'open'"), 'waiting for a freelancer', 'accent', url(['tab' => 'briefs', 'status' => 'open'])],
-    ['Active freelancers', (int)$one("SELECT COUNT(*) FROM (
+    ['Open briefs', (int)$one("SELECT COUNT(*) FROM briefs WHERE status = 'open'"), 'waiting for a Design Creator', 'accent', url(['tab' => 'briefs', 'status' => 'open'])],
+    ['Active Design Creators', (int)$one("SELECT COUNT(*) FROM (
             SELECT claimed_by AS fid FROM briefs WHERE claimed_by IS NOT NULL AND status IN ('claimed', 'in_review', 'needs_revision')
             UNION SELECT freelancer_id FROM submissions WHERE submitted_at >= NOW() - INTERVAL 90 DAY
         ) x"), 'working now or submitted in 90 days', 'accent', url(['tab' => 'freelancers'])],
@@ -119,7 +119,7 @@ $nothingPending = !$callbacks && !$reviews && !$pendingSubs && !$overdue && !$ov
     <?php endif; ?>
 
     <?php if ($pendingSubs): ?>
-      <h3 class="pend-head">Freelancer work to review</h3>
+      <h3 class="pend-head">Design Creator work to review</h3>
       <ul class="pend-list">
       <?php foreach ($pendingSubs as $s): ?>
         <li class="pend"><a class="pend-main" href="<?= h(url(['tab' => 'submissions', 'id' => $s['id']])) ?>">

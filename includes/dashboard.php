@@ -1,5 +1,5 @@
 <?php
-// Shared helpers for the in-house and designer (freelancer) dashboards: layout, CSRF,
+// Shared helpers for the in-house dashboard and the Creator Studio (freelancer/): layout, CSRF,
 // flash messages, badges, deadlines and the compact brief-parameter view.
 // Only defines things; outputs nothing if opened directly.
 
@@ -123,6 +123,7 @@ function dash_svg($name) {
         'menu' => '<path d="M4 6h16M4 12h16M4 18h16"/>',
         'expert' => '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/>',
         'clock' => '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+        'lock' => '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/>',
     ][$name] ?? '';
     return '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' . $p . '</svg>';
 }
@@ -198,8 +199,8 @@ function dash_layout_start($brand, $title, array $nav, $active, $userName, array
         . '<meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">'
         . '<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'
         . '<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">'
-        . '<link rel="stylesheet" href="../assets/style.css?v=20260926a"><link rel="stylesheet" href="../assets/admin.css?v=6">'
-        . '<link rel="stylesheet" href="../assets/brief-form.css?v=2"><link rel="stylesheet" href="../assets/dashboard.css?v=1">';
+        . '<link rel="stylesheet" href="../assets/style.css?v=20260926a"><link rel="stylesheet" href="../assets/admin.css?v=7">'
+        . '<link rel="stylesheet" href="../assets/brief-form.css?v=2"><link rel="stylesheet" href="../assets/dashboard.css?v=1"><link rel="stylesheet" href="../assets/password.css?v=1">';
     foreach ($extraCss as $css) $html .= '<link rel="stylesheet" href="' . dh($css) . '">';
     $html .= '</head><body class="adm-body"><div class="adm" id="adm"><aside class="adm-side" id="admSide" aria-label="Menu">'
         . '<div class="adm-brand">planzaa<span>.</span> ' . dh($brand) . '</div><nav class="adm-nav">';
@@ -218,7 +219,32 @@ function dash_layout_end() {
     return '</div></main></div>'
         . '<dialog class="adm-confirm" id="admConfirm"><form method="dialog"><h2>Are you sure?</h2><p id="admConfirmText">This cannot be undone.</p>'
         . '<div class="adm-actions"><button class="btn" value="cancel">Cancel</button><button class="btn btn-danger" value="ok" id="admConfirmOk">Yes, do it</button></div></form></dialog>'
-        . '<script src="../assets/admin.js?v=1"></script><script src="../assets/brief-form.js?v=3"></script></body></html>';
+        . '<script src="../assets/admin.js?v=1"></script><script src="../assets/brief-form.js?v=3"></script><script src="../assets/password.js?v=1"></script></body></html>';
+}
+
+/** "Change your password" card (in-house Change Password tab, Creator Studio My Profile). Posts action=password_change. */
+function dash_password_form() {
+    return '<section class="adm-card form-card" id="passwordForm"><h2>Change your password</h2>'
+        . '<form method="post" data-saving autocomplete="off">' . dash_csrf_field() . '<input type="hidden" name="action" value="password_change">'
+        . '<div class="form-grid-adm one">'
+        . '<label>Current password<input name="current_password" type="password" required autocomplete="current-password"></label>'
+        . '<label>New password<input id="newPw" name="new_password" type="password" required minlength="' . PASSWORD_MIN_LENGTH . '" maxlength="200" autocomplete="new-password"></label>'
+        . password_rules_html('newPw', 'newPw2')
+        . '<label>Type the new password again<input id="newPw2" name="password2" type="password" required maxlength="200" autocomplete="new-password"></label>'
+        . '</div><div class="adm-actions left"><button class="btn btn-primary" type="submit">Change password</button></div></form></section>';
+}
+
+/** Checks a password change for any account table. Returns an error message or null (and saves it). */
+function dash_change_password($table, $id) {
+    $hash = (string)sim_q("SELECT password_hash FROM $table WHERE id = ?", [(int)$id])->fetchColumn();
+    $new = (string)($_POST['new_password'] ?? '');
+    if ($hash === '' || !password_verify((string)($_POST['current_password'] ?? ''), $hash)) return 'Your current password is not correct.';
+    if ($rule = password_rule_error($new)) return $rule;
+    if ($new !== (string)($_POST['password2'] ?? '')) return 'The two new passwords do not match.';
+    if (password_verify($new, $hash)) return 'Your new password must be different from your current one.';
+    sim_q("UPDATE $table SET password_hash = ? WHERE id = ?", [password_hash($new, PASSWORD_DEFAULT), (int)$id]);
+    session_regenerate_id(true);
+    return null;
 }
 
 function dash_flash_html($flash) {

@@ -3,5 +3,34 @@
     Require all denied
 </FilesMatch>
 
+# Database scripts and notes (the README lists the first-time test passwords).
+<FilesMatch "\.(sql|md|ini|log)$">
+    Require all denied
+</FilesMatch>
+
 # Never allow directory listing.
 Options -Indexes
+
+# Security headers
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set X-XSS-Protection "1; mode=block"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
+# PHP errors are logged, never shown to visitors (they can reveal file paths and database details).
+# Wrapped so a server without these modules ignores the lines instead of failing;
+# .user.ini and includes/security.php set the same thing for other PHP setups.
+<IfModule mod_php.c>
+    php_flag display_errors Off
+    php_flag log_errors On
+</IfModule>
+<IfModule mod_php7.c>
+    php_flag display_errors Off
+    php_flag log_errors On
+</IfModule>
+<IfModule LiteSpeed>
+    php_flag display_errors Off
+    php_flag log_errors On
+</IfModule>

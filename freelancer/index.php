@@ -90,15 +90,10 @@ if ($ready && $_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if ($action === 'password_change') {
-        $hash = sim_q("SELECT password_hash FROM freelancers WHERE id = ?", [$myId])->fetchColumn();
-        $new = (string)($_POST['new_password'] ?? '');
-        $back = function () { header('Location: ' . dash_url(['tab' => 'profile']) . '#passwordForm'); exit; };
-        if (!$hash || !password_verify((string)($_POST['current_password'] ?? ''), $hash)) { dash_flash('Your current password is not correct.', 'err'); $back(); }
-        if (strlen($new) < 8) { dash_flash('The new password must be at least 8 characters.', 'err'); $back(); }
-        if ($new !== (string)($_POST['password2'] ?? '')) { dash_flash('The two new passwords do not match.', 'err'); $back(); }
-        sim_q("UPDATE freelancers SET password_hash = ? WHERE id = ?", [password_hash($new, PASSWORD_DEFAULT), $myId]);
-        dash_flash('Your password has been changed.');
-        $back();
+        $err = dash_change_password('freelancers', $myId);
+        dash_flash($err ?: 'Your password has been changed.', $err ? 'err' : 'ok');
+        header('Location: ' . dash_url(['tab' => 'profile']) . '#passwordForm');
+        exit;
     }
 
     // Accounts that are no longer active (suspended while signed in) keep their session
@@ -157,14 +152,14 @@ $workCount = $ready ? $one("SELECT COUNT(*) FROM briefs WHERE claimed_by = ? AND
 $nav = [];
 foreach ($TABS as $k => [$label, $icon]) $nav[$k] = [$label, $icon, $k === 'work' ? $workCount : 0];
 
-echo dash_layout_start('designer', $TABS[$tab][0], $nav, $tab, $_SESSION['freelancer_name']);
+echo dash_layout_start('creator studio', $TABS[$tab][0], $nav, $tab, $_SESSION['freelancer_name']);
 echo dash_flash_html($flash);
 if ($ready && !$canWork) echo '<div class="adm-flash err" role="alert">' . dh($inactiveMsg) . '</div>';
 
 if (!$ready):
 ?>
   <div class="adm-card adm-setup"><h2>We're updating your dashboard</h2>
-    <p>The designer dashboard is being upgraded. Please check back in a little while. Your claimed briefs and submissions are safe.</p></div>
+    <p>The Creator Studio is being upgraded. Please check back in a little while. Your claimed briefs and submissions are safe.</p></div>
 <?php
     echo dash_layout_end();
     exit;
@@ -438,18 +433,7 @@ elseif ($tab === 'profile'):
     <div class="adm-actions left"><button class="btn btn-primary" type="submit">Save changes</button></div>
   </form>
 </section>
-<section class="adm-card form-card" id="passwordForm">
-  <h2>Change your password</h2>
-  <form method="post" data-saving autocomplete="off">
-    <?= dash_csrf_field() ?><input type="hidden" name="action" value="password_change">
-    <div class="form-grid-adm one">
-      <label>Current password<input name="current_password" type="password" required autocomplete="current-password"></label>
-      <label>New password<input name="new_password" type="password" required minlength="8" autocomplete="new-password"><small>At least 8 characters.</small></label>
-      <label>Type the new password again<input name="password2" type="password" required minlength="8" autocomplete="new-password"></label>
-    </div>
-    <div class="adm-actions left"><button class="btn btn-primary" type="submit">Change password</button></div>
-  </form>
-</section>
+<?= dash_password_form() ?>
 <script>
 (function () {
   var q = document.getElementById('profQual'), box = document.getElementById('profQualOther');

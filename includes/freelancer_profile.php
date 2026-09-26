@@ -1,9 +1,10 @@
 <?php
-// Designer (freelancer) profiles: labels, validation, rate limits and the emails sent
+// Design Creator (freelancer) profiles: labels, validation, rate limits and the emails sent
 // about registrations. Shared by register.php, login.php, api/check-email.php,
 // freelancer/ and admin/. Only defines functions.
 
 require_once __DIR__ . '/design_utils.php'; // db.php, getSettingValue()
+require_once __DIR__ . '/security.php';     // password rules
 
 const QUALIFICATIONS = [
     'b_arch' => 'B.Arch (Bachelor of Architecture)',
@@ -40,7 +41,7 @@ function qualification_label(array $f) {
 }
 function experience_label(array $f) { return EXPERIENCE_LEVELS[$f['experience'] ?? ''] ?? '—'; }
 
-/** Is this email used by any login (staff or designer)? $exceptFreelancer skips one designer row. */
+/** Is this email used by any login (staff or Design Creator)? $exceptFreelancer skips one creator row. */
 function email_taken($email, $exceptFreelancer = 0) {
     $email = strtolower(trim((string)$email));
     if (fp_q("SELECT id FROM staff WHERE email = ?", [$email])->fetchColumn()) return true;
@@ -86,8 +87,7 @@ function validate_profile_input(array $in, $withAccount) {
 
     if ($withAccount) {
         $pw = (string)($in['password'] ?? '');
-        if (strlen($pw) < 8) $e['password'] = 'Your password needs at least 8 characters.';
-        elseif (strlen($pw) > 200) $e['password'] = 'Please use a shorter password.';
+        if ($rule = password_rule_error($pw)) $e['password'] = $rule;
         if (!isset($e['password']) && $pw !== (string)($in['password2'] ?? '')) $e['password2'] = 'The two passwords do not match.';
         $d['password'] = $pw;
     }
@@ -144,7 +144,7 @@ function fp_mail($to, $subject, $body) {
 
 function email_admin_new_registration(array $f) {
     $one = function ($s) { return trim(preg_replace('/[\r\n]+/', ' ', (string)$s)); };
-    $body = "A new designer has registered on Planzaa.\n\n"
+    $body = "A new Design Creator has registered on Planzaa.\n\n"
         . "Name: " . $one($f['name']) . "\n"
         . "Email: " . $one($f['email']) . "\n"
         . "Phone: " . $one($f['phone']) . "\n"
@@ -153,12 +153,12 @@ function email_admin_new_registration(array $f) {
         . "Experience: " . experience_label($f) . "\n"
         . "Portfolio: " . ($f['portfolio_link'] ? $one($f['portfolio_link']) : 'Not provided') . "\n\n"
         . "Review their profile: " . fp_site_url() . "/admin/?tab=freelancers\n";
-    return fp_mail(getSettingValue(getDB(), 'admin_notification_email', ''), 'New designer registration — ' . $one($f['name']), $body);
+    return fp_mail(getSettingValue(getDB(), 'admin_notification_email', ''), 'New Design Creator registration — ' . $one($f['name']), $body);
 }
 
 function email_freelancer_approved(array $f) {
     $body = "Hi {$f['name']},\n\n"
-        . "Your designer account on Planzaa has been approved! You can now sign in and start claiming design briefs.\n\n"
+        . "Your Design Creator account on Planzaa has been approved! You can now sign in and start claiming design briefs.\n\n"
         . "Sign in here: " . fp_site_url() . "/login.php?type=freelancer\n\n"
         . "Welcome to the team!\n— Planzaa\n";
     return fp_mail($f['email'], 'Welcome to Planzaa — your account is active!', $body);
@@ -166,7 +166,7 @@ function email_freelancer_approved(array $f) {
 
 function email_freelancer_rejected(array $f, $reason) {
     $body = "Hi {$f['name']},\n\n"
-        . "Thank you for your interest in joining Planzaa as a designer. After reviewing your profile, we're unable to approve your registration at this time.\n\n"
+        . "Thank you for your interest in joining Planzaa as a Design Creator. After reviewing your profile, we're unable to approve your registration at this time.\n\n"
         . "Reason: {$reason}\n\n"
         . "If you think this is a mistake or you have additional qualifications to share, please reply to this email or contact us at " . PLANZAA_CONTACT_EMAIL . ".\n\n"
         . "— Planzaa\n";

@@ -1,8 +1,8 @@
 <?php
-// Public page: designers sign up here. New accounts are saved as 'pending' and can only
+// Public page: Design Creators sign up here. New accounts are saved as 'pending' and can only
 // sign in after the admin approves them (Admin -> Freelancers).
 require_once __DIR__ . '/includes/freelancer_profile.php';
-if (session_status() === PHP_SESSION_NONE) session_start();
+require_once __DIR__ . '/auth.php'; // session with safe cookie settings
 
 function rh($s) { return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
 if (empty($_SESSION['reg_csrf'])) $_SESSION['reg_csrf'] = bin2hex(random_bytes(32));
@@ -12,6 +12,9 @@ $ready = phase8_ready();
 $values = [];
 $errors = [];
 $formError = '';
+$challengeError = '';
+// After a couple of failed tries from this internet connection, a simple math question is added.
+$needChallenge = $ready && rate_limited('register_fail', REGISTER_CHALLENGE_AFTER, 3600);
 
 if ($ready && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $values = $_POST;
@@ -23,6 +26,10 @@ if ($ready && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $_SESSION['reg_done'] = true;
         header('Location: register.php?done=1');
         exit;
+    } elseif ($needChallenge && !challenge_check('register', $_POST['challenge'] ?? '')) {
+        $challengeError = trim((string)($_POST['challenge'] ?? '')) === '' ? 'Please answer the question.' : 'That answer is not right. Please try again.';
+        $formError = 'Please answer the quick check at the bottom of the form.';
+        rate_log('register_fail');
     } elseif (rate_limited('register', REG_PER_IP_PER_DAY, 86400)) {
         $formError = 'Too many registrations have been sent from this internet connection today. Please try again tomorrow, or write to us at ' . PLANZAA_CONTACT_EMAIL . '.';
     } else {
@@ -47,6 +54,8 @@ if ($ready && $_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
         $formError = 'Please fix the ' . (count($errors) === 1 ? 'highlighted field' : count($errors) . ' highlighted fields') . ' below.';
+        rate_log('register_fail');
+        $needChallenge = $needChallenge || rate_limited('register_fail', REGISTER_CHALLENGE_AFTER, 3600);
     }
 }
 
@@ -62,20 +71,21 @@ $aria = function ($k) use ($errors) { return isset($errors[$k]) ? ' aria-invalid
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Join our design team &#8212; Planzaa</title>
+<title>Become a Planzaa Design Creator &#8212; Planzaa</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="Architects, designers and architecture students: register to design house plans with Planzaa.">
+<meta name="description" content="Architects, designers and architecture students: become a Planzaa Design Creator and design house plans with us.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/style.css?v=20260926a">
-<link rel="stylesheet" href="assets/register.css?v=2">
+<link rel="stylesheet" href="assets/register.css?v=3">
+<link rel="stylesheet" href="assets/password.css?v=1">
 </head>
 <body class="site reg-body">
 <main class="reg-wrap page-enter">
   <header class="reg-head">
     <a class="brand" href="index.php">planzaa<span>.</span></a>
-    <p>Join our design team</p>
+    <p>Become a Planzaa Design Creator</p>
   </header>
 
 <?php if ($done): ?>
@@ -97,7 +107,7 @@ $aria = function ($k) use ($errors) { return isset($errors[$k]) ? ' aria-invalid
   <h1 class="reg-title">Design houses with Planzaa</h1>
   <p class="reg-intro">We work with talented architects, designers, and architecture students across India. Register below and our team will review your profile within 48 hours.</p>
 
-  <form class="form-card reg-form" id="regForm" method="post" action="register.php" novalidate>
+  <form class="form-card reg-form" id="regForm" method="post" action="register.php" novalidate data-pw-noguard>
     <input type="hidden" name="csrf" value="<?= rh($_SESSION['reg_csrf']) ?>">
     <div class="reg-hp" aria-hidden="true"><label>Leave this empty <input name="website" tabindex="-1" autocomplete="off"></label></div>
     <p class="form-error" id="formError" role="alert"><?= rh($formError) ?></p>
@@ -108,9 +118,10 @@ $aria = function ($k) use ($errors) { return isset($errors[$k]) ? ' aria-invalid
       <div class="<?= $cls('email') ?>" id="f_email"><input id="email" name="email" type="email" placeholder=" " autocomplete="email" maxlength="150" required value="<?= $v('email') ?>"<?= $aria('email') ?>><label for="email">Email address</label><?= $err('email') ?></div>
       <div class="<?= $cls('phone') ?>" id="f_phone"><input id="phone" name="phone" type="tel" inputmode="numeric" placeholder=" " autocomplete="tel-national" maxlength="11" required value="<?= $v('phone') ?>"<?= $aria('phone') ?>><label for="phone">Mobile number</label><?= $err('phone') ?></div>
       <div class="<?= $cls('city') ?>" id="f_city"><input id="city" name="city" placeholder=" " autocomplete="address-level2" maxlength="100" required value="<?= $v('city') ?>"<?= $aria('city') ?>><label for="city">Your city or town</label><?= $err('city') ?></div>
-      <div class="<?= $cls('password', 'pw') ?>" id="f_password"><input id="password" name="password" type="password" placeholder=" " autocomplete="new-password" minlength="8" maxlength="200" required<?= $aria('password') ?>><label for="password">Password (at least 8 characters)</label>
+      <div class="<?= $cls('password', 'pw') ?>" id="f_password"><input id="password" name="password" type="password" placeholder=" " autocomplete="new-password" minlength="10" maxlength="200" required<?= $aria('password') ?>><label for="password">Password</label>
         <button type="button" class="pw-toggle" data-for="password" aria-pressed="false">Show</button>
-        <div class="pw-meter" id="pwMeter" hidden><span class="pw-bar"><i></i></span><span class="pw-word" id="pwWord"></span></div><?= $err('password') ?></div>
+        <?= $err('password') ?></div>
+      <?= password_rules_html('password') ?>
       <div class="<?= $cls('password2', 'pw') ?>" id="f_password2"><input id="password2" name="password2" type="password" placeholder=" " autocomplete="new-password" maxlength="200" required<?= $aria('password2') ?>><label for="password2">Type the password again</label>
         <button type="button" class="pw-toggle" data-for="password2" aria-pressed="false">Show</button><?= $err('password2') ?></div>
     </section>
@@ -144,12 +155,13 @@ $aria = function ($k) use ($errors) { return isset($errors[$k]) ? ' aria-invalid
         <p class="reg-help">Link to your portfolio, Behance, Instagram, or any website showing your work. Optional but helps us review your profile faster.</p></div>
     </section>
 
-    <button class="btn btn-primary btn-submit" type="submit" id="submitBtn"><span class="btn-label">Register as a designer</span></button>
+    <?php if ($needChallenge): ?><?= challenge_html('register', $challengeError) ?><?php endif; ?>
+    <button class="btn btn-primary btn-submit" type="submit" id="submitBtn"><span class="btn-label">Join as a Design Creator</span></button>
     <p class="fine-print">Already registered? <a href="login.php?type=freelancer">Sign in</a></p>
   </form>
   <p class="reg-contact">Questions? <a href="mailto:<?= PLANZAA_CONTACT_EMAIL ?>"><?= PLANZAA_CONTACT_EMAIL ?></a> &#183; <a href="tel:<?= str_replace('-', '', PLANZAA_CONTACT_PHONE) ?>"><?= PLANZAA_CONTACT_PHONE ?></a></p>
 <?php endif; ?>
 </main>
-<?php if ($ready && !$done): ?><script src="assets/register.js?v=2"></script><?php endif; ?>
+<?php if ($ready && !$done): ?><script src="assets/password.js?v=1"></script><script src="assets/register.js?v=3"></script><?php endif; ?>
 </body>
 </html>

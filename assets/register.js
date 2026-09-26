@@ -1,4 +1,4 @@
-// Live checks for the designer registration form (register.php).
+// Live checks for the Design Creator registration form (register.php).
 // The server checks everything again; this only helps people fix mistakes early.
 (function () {
   const form = document.getElementById('regForm');
@@ -82,27 +82,16 @@
     btn.setAttribute('aria-pressed', show ? 'true' : 'false');
     btn.setAttribute('aria-label', (show ? 'Hide' : 'Show') + ' password');
   }));
-  const pw = $('password'), pw2 = $('password2'), meter = $('pwMeter'), word = $('pwWord');
-  function strength(p) {
-    if (p.length < 8) return 0;
-    let s = 1;
-    if (p.length >= 12) s++;
-    if (/[a-z]/i.test(p) && /\d/.test(p)) s++;
-    if (/[^a-z0-9]/i.test(p)) s++;
-    if (/[a-z]/.test(p) && /[A-Z]/.test(p)) s++;
-    return s <= 1 ? 1 : (s <= 3 ? 2 : 3);
-  }
-  const checkPw = () => { const ok = pw.value.length >= 8; setState('password', ok ? 'valid' : 'invalid', 'Your password needs at least 8 characters.'); return ok; };
+  // The checklist and strength meter under the field come from assets/password.js.
+  const pw = $('password'), pw2 = $('password2');
+  const pwOk = () => !(window.PlanzaaPassword && window.PlanzaaPassword.problems(pw.value).length) && pw.value.length >= 10;
+  const checkPw = () => { const ok = pwOk(); setState('password', ok ? 'valid' : 'invalid', 'Your password does not meet all the rules below yet.'); return ok; };
   const checkPw2 = () => {
     if (!pw2.value) { setState('password2', 'invalid', 'Please type the password again.'); return false; }
     const ok = pw2.value === pw.value; setState('password2', ok ? 'valid' : 'invalid', 'The two passwords do not match.'); return ok;
   };
   pw.addEventListener('input', () => {
-    const s = strength(pw.value);
-    meter.hidden = pw.value === '';
-    meter.dataset.level = s;
-    word.textContent = pw.value.length < 8 ? (8 - pw.value.length) + ' more character' + (pw.value.length === 7 ? '' : 's') + ' needed' : ['', 'Weak', 'Medium', 'Strong'][s];
-    if (pw.value.length >= 8) setState('password', 'valid'); else if (pw.dataset.touched) setState('password', '');
+    if (pwOk()) setState('password', 'valid'); else if (pw.dataset.touched) setState('password', '');
     if (pw2.value && pw2.value.length >= pw.value.length) checkPw2();
   });
   pw.addEventListener('blur', () => { if (pw.value) { pw.dataset.touched = '1'; checkPw(); } });

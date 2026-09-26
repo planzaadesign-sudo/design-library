@@ -65,7 +65,7 @@ $showForm = !empty($_GET['new']);
 <?php if ($showForm): ?>
 <section class="adm-card form-card" id="briefFormCard">
   <h2>Post a new brief</h2>
-  <p class="muted">Answer each question so we can check the library for similar designs before a freelancer starts work.</p>
+  <p class="muted">Answer each question so we can check the library for similar designs before a Design Creator starts work.</p>
   <?= render_brief_form($OLD, [
       'hidden' => csrf_field() . return_field() . '<input type="hidden" name="action" value="brief_save">',
       'api' => '../api/similarity-check.php',

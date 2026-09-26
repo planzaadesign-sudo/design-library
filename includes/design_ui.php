@@ -41,7 +41,7 @@ function render_design_files(array $design, $hidden, $serveBase) {
                 if (in_array($slot, PREVIEW_SLOTS, true) || $s['type'] === 'image') {
                     $html .= '<img class="slot-thumb" src="' . du_h($serveBase . 'serve-file.php?design_id=' . (int)$design['id'] . '&slot=' . $slot . '&v=' . strtotime($f['uploaded_at'])) . '" alt="" loading="lazy">';
                 }
-                $who = $f['staff_name'] ?: ($f['freelancer_name'] ? $f['freelancer_name'] . ' (designer)' : '—');
+                $who = $f['staff_name'] ?: ($f['freelancer_name'] ? $f['freelancer_name'] . ' (Design Creator)' : '—');
                 $html .= '<div class="slot-meta"><span class="fn" title="' . du_h($f['original_filename']) . '">' . du_h($f['original_filename']) . '</span>'
                     . '<span>' . du_h(human_size((int)$f['file_size'])) . ' &#183; ' . dui_date($f['uploaded_at']) . ' &#183; ' . du_h($who) . '</span></div>'
                     . '<div class="slot-actions"><a class="btn btn-small" href="' . du_h($serveBase . 'serve-file.php?design_id=' . (int)$design['id'] . '&slot=' . $slot . '&download=1') . '">Download</a>'
@@ -77,7 +77,7 @@ function render_design_history(array $d) {
     $steps = [];
     if ($d['brief_id'] || $d['designed_by']) {
         $steps[] = ['Brief posted by', $names('staff', $d['brief_created_by']), $d['brief_created_at']];
-        $steps[] = ['Designed by', $d['designed_by'] ? $names('freelancers', $d['designed_by']) . ' (designer)' : null, $d['designed_at'], 'submitted'];
+        $steps[] = ['Designed by', $d['designed_by'] ? $names('freelancers', $d['designed_by']) . ' (Design Creator)' : null, $d['designed_at'], 'submitted'];
         $steps[] = ['Reviewed by', $names('staff', $d['reviewed_by']), $d['reviewed_at']];
         $steps[] = ['Approved by', $names('staff', $d['approved_by']), $d['approved_at']];
         $steps[] = ['Published by', $names('staff', $d['standardized_by']), $d['published_at']];

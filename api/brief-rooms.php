@@ -1,7 +1,7 @@
 <?php
-// Library designs similar to one of the signed-in freelancer's claimed briefs, plus how many
+// Library designs similar to one of the signed-in Design Creator's claimed briefs, plus how many
 // other briefs with similar requirements are being worked on (count only -- no names or details).
-// GET ?brief_id=  Freelancers only.
+// GET ?brief_id=  Design Creators only.
 header('Content-Type: application/json');
 require_once __DIR__ . '/../auth.php'; // starts the session
 require_once __DIR__ . '/../includes/similarity.php';

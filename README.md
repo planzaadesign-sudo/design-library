@@ -44,14 +44,16 @@ It is used at four points:
 
 ## Test login accounts
 
-Created by `seed_accounts.php` — delete that file after running it once.
-Change these passwords before going to production.
+Created by `seed_accounts.php` on a brand-new database only — delete that file after running it once.
+Staff accounts must choose their own password at their first sign-in (at least 10 characters with
+an uppercase letter, a lowercase letter, a number and a special character), so the staff passwords
+below only work once.
 
-| Role       | Email              | Password   |
-|------------|--------------------|------------|
-| Admin      | admin@planzaa.in   | admin123   |
-| In-house   | aarav@planzaa.in   | inhouse123 |
-| Freelancer | aman@example.com   | free123    |
+| Role           | Email              | First password |
+|----------------|--------------------|----------------|
+| Admin          | admin@planzaa.in   | admin123       |
+| In-house       | aarav@planzaa.in   | inhouse123     |
+| Design Creator | aman@example.com   | free123        |
 
 ## Deploy to Hostinger — step by step
 
@@ -78,14 +80,18 @@ Change these passwords before going to production.
    was uploaded too — design files are only served through `serve-file.php`.
    Set the admin notification email in Admin → Settings.
    Then `schema-phase8.sql`, once (designers can register themselves at
-   `register.php`; the admin approves or rejects them in Admin → Freelancers.
-   Existing designer accounts stay active).
+   `register.php`; the admin approves or rejects them in Admin → Design Creators.
+   Existing Design Creator accounts stay active).
+   Then `schema-phase9.sql`, once (security: password rules, forced password
+   change, password reset links, sign-in lockouts). It also makes the admin
+   choose a new password at the next sign-in.
    If anything is missing, the admin dashboard lists exactly what to run.
 3. Fill in `config.php` with real database credentials.
 4. Upload everything except the `.sql` files into the `test` folder.
 5. Visit `test.planzaa.in/seed_accounts.php` once to create logins and
-   sample briefs. Then DELETE `seed_accounts.php` from the server
-   immediately — a script with known passwords must never stay live.
+   sample briefs. Then DELETE `seed_accounts.php` from the server.
+   (It refuses to run once any staff account exists, and it never changes
+   an existing password.)
 6. Test each dashboard with the accounts above.
 
 ## Security measures
@@ -98,6 +104,13 @@ Change these passwords before going to production.
 - `config.php`, `db.php`, and `.sql` files blocked from direct browser access.
 - Passwords hashed with `password_hash()`, never stored in plain text.
 - Order codes are random and namespaced (`PZL-XXXXXX`).
+- Sign-in security lives in `includes/security.php` (used through `auth.php`):
+  session cookies are HttpOnly, SameSite=Strict and Secure on HTTPS; staff and
+  Design Creators are signed out after 30 (admin) or 60 minutes without activity;
+  only one admin session at a time; 5 wrong passwords from one IP = 15-minute wait,
+  10 for one email = 1-hour lock (Admin → Settings → Security can unlock);
+  a math question after 3 failed tries; password reset links are single-use,
+  expire after 1 hour and only a hash of them is stored.
 
 ## What was actually tested
 

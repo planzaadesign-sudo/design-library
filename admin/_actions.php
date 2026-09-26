@@ -74,7 +74,7 @@ case 'design_save':
         q("UPDATE designs SET " . implode(' = ?, ', $cols) . " = ? WHERE id = ?", array_merge($vals, [$id]));
         flash($isDraft ? 'Draft saved. Upload its files, then publish it.' : 'Design saved. (Its design code stays the same.)');
     } else {
-        // Added directly by the admin: no brief or designer; the admin is the whole audit trail.
+        // Added directly by the admin: no brief or Design Creator; the admin is the whole audit trail.
         // It has no files yet, so it stays hidden until they are uploaded (then use the switch).
         $vals[array_search('is_active', $cols, true)] = 0;
         $pdo = getDB();
@@ -217,7 +217,7 @@ case 'brief_save':
     if ($err) $fail($err);
     $err = save_brief($d, $myId, !empty($_POST['confirm_similar']));
     if ($err) $fail($err);
-    flash('Brief posted. Freelancers can now claim it.');
+    flash('Brief posted. Design Creators can now claim it.');
     header('Location: ' . url(['tab' => 'briefs']));
     exit;
 
@@ -229,16 +229,16 @@ case 'sub_review':
     $sub = q("SELECT brief_id, review_status FROM submissions WHERE id = ?", [$subId])->fetch();
     if (!$sub) $fail('Submission not found.', ['tab' => 'submissions']);
     if ($sub['review_status'] !== 'pending') $fail('This submission has already been reviewed.');
-    if ($outcome === 'reject' && $notes === '') $fail('Please write what the freelancer should fix before sending it back.');
+    if ($outcome === 'reject' && $notes === '') $fail('Please write what the Design Creator should fix before sending it back.');
     if (!in_array($outcome, ['approve', 'approve_edits', 'reject'], true)) $fail('Please choose a review action.');
     if ($outcome !== 'reject' && empty($_POST['confirm_different'])) $fail('Please check the similarity confirmation before approving.');
     if ($outcome === 'approve_edits') $notes = trim('Approved. Our in-house team will make small fixes before publishing. ' . $notes);
     $status = $outcome === 'reject' ? 'rejected' : 'approved';
     q("UPDATE submissions SET review_status = ?, reviewer_id = ?, review_notes = ?, reviewed_at = NOW() WHERE id = ?", [$status, $myId, $notes, $subId]);
     q("UPDATE briefs SET status = ? WHERE id = ?", [$status === 'approved' ? 'approved' : 'needs_revision', $sub['brief_id']]);
-    // Approval creates the draft design; the designer's files go into their slots straight away.
+    // Approval creates the draft design; the Design Creator's files go into their slots straight away.
     if ($status === 'approved') create_draft_from_submission($subId, $myId);
-    flash($status === 'approved' ? 'Approved. A draft design was created — upload its files, then publish it.' : 'Sent back to the freelancer with your notes.');
+    flash($status === 'approved' ? 'Approved. A draft design was created — upload its files, then publish it.' : 'Sent back to the Design Creator with your notes.');
     go_back(['tab' => 'submissions', 'id' => $subId]);
 
 case 'sub_publish':
@@ -265,14 +265,26 @@ case 'staff_edit':
     if (q("SELECT id FROM staff WHERE email = ? AND id <> ?", [$email, $id])->fetchColumn()) $fail('Another team member already uses this email.');
     if ($id) {
         if ($id === $myId && $role !== 'admin') $fail('You cannot remove your own admin role.');
+        if (q("SELECT id FROM freelancers WHERE email = ?", [$email])->fetchColumn()) $fail('A Design Creator already uses this email.');
         q("UPDATE staff SET name = ?, email = ?, role = ? WHERE id = ?", [$name, $email, $role, $id]);
-        flash('Team member updated.');
-    } else {
+        // Optional: give them a new temporary password (e.g. they forgot theirs and email is not working).
         $pw = (string)($_POST['password'] ?? '');
-        if (strlen($pw) < 8) $fail('The password must be at least 8 characters.');
+        if ($pw !== '' && $id !== $myId) {
+            if ($rule = password_rule_error($pw)) $fail('Temporary password: ' . $rule);
+            if ($pw !== (string)($_POST['password2'] ?? '')) $fail('The two passwords do not match.');
+            q("UPDATE staff SET password_hash = ?, must_change_password = 1, session_token = NULL WHERE id = ?", [password_hash($pw, PASSWORD_DEFAULT), $id]);
+            flash('Team member updated. They will be asked to choose their own password when they next sign in.');
+        } else {
+            flash('Team member updated.');
+        }
+    } else {
+        if (q("SELECT id FROM freelancers WHERE email = ?", [$email])->fetchColumn()) $fail('A Design Creator already uses this email.');
+        $pw = (string)($_POST['password'] ?? '');
+        if ($rule = password_rule_error($pw)) $fail('Temporary password: ' . $rule);
         if ($pw !== (string)($_POST['password2'] ?? '')) $fail('The two passwords do not match.');
-        q("INSERT INTO staff (name, email, password_hash, role) VALUES (?, ?, ?, ?)", [$name, $email, password_hash($pw, PASSWORD_DEFAULT), $role]);
-        flash('Team member added. Share their email and password with them privately.');
+        // The temporary password only works until their first sign-in, when they must choose their own.
+        q("INSERT INTO staff (name, email, password_hash, role, must_change_password) VALUES (?, ?, ?, ?, 1)", [$name, $email, password_hash($pw, PASSWORD_DEFAULT), $role]);
+        flash('Team member added. Share their email and temporary password with them privately — they will choose their own password when they first sign in.');
     }
     header('Location: ' . url(['tab' => 'team']));
     exit;
@@ -302,23 +314,23 @@ case 'freelancer_add':
     $pw = (string)($_POST['password'] ?? '');
     if ($name === '' || mb_strlen($name) > 100) $fail('Please enter a name.');
     if (!filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($email) > 150) $fail('Please enter a valid email address.');
-    if (q("SELECT id FROM freelancers WHERE email = ?", [$email])->fetchColumn()) $fail('A freelancer with this email already exists.');
-    if (strlen($pw) < 8) $fail('The password must be at least 8 characters.');
+    if (email_taken($email)) $fail('An account with this email already exists.');
+    if ($rule = password_rule_error($pw)) $fail($rule);
     if ($pw !== (string)($_POST['password2'] ?? '')) $fail('The two passwords do not match.');
     q("INSERT INTO freelancers (name, email, password_hash) VALUES (?, ?, ?)", [$name, $email, password_hash($pw, PASSWORD_DEFAULT)]);
-    flash('Freelancer added. Share their email and password with them privately.');
+    flash('Design Creator added. Share their email and password with them privately.');
     header('Location: ' . url(['tab' => 'freelancers']));
     exit;
 
-// Designer accounts: approve / reject registrations, suspend / reactivate. The admin never edits
-// the profile itself -- that stays the designer's own. Each UPDATE only runs from the right status.
+// Design Creator accounts: approve / reject registrations, suspend / reactivate. The admin never edits
+// the profile itself -- that stays the Design Creator's own. Each UPDATE only runs from the right status.
 case 'freelancer_approve':
 case 'freelancer_reject':
 case 'freelancer_suspend':
 case 'freelancer_reactivate':
     $id = $int('id');
     $fr = q("SELECT * FROM freelancers WHERE id = ?", [$id])->fetch();
-    if (!$fr) $fail('Freelancer not found.', ['tab' => 'freelancers']);
+    if (!$fr) $fail('Design Creator not found.', ['tab' => 'freelancers']);
     $back = ['tab' => 'freelancers', 'id' => $id];
     $mailNote = function ($sent) { return $sent ? ' We emailed them.' : ' (The email could not be sent — please let them know yourself.)'; };
     if ($action === 'freelancer_approve') {
@@ -387,11 +399,29 @@ case 'password_change':
     $hash = q("SELECT password_hash FROM staff WHERE id = ?", [$myId])->fetchColumn();
     $new = (string)($_POST['new_password'] ?? '');
     if (!$hash || !password_verify((string)($_POST['current_password'] ?? ''), $hash)) $fail('Your current password is not correct.');
-    if (strlen($new) < 8) $fail('The new password must be at least 8 characters.');
-    if ($new !== (string)($_POST['password2'] ?? '')) $fail('The two new passwords do not match.');
-    q("UPDATE staff SET password_hash = ? WHERE id = ?", [password_hash($new, PASSWORD_DEFAULT), $myId]);
+    if ($rule = password_rule_error($new)) $fail($rule, ['tab' => 'settings']);
+    if ($new !== (string)($_POST['password2'] ?? '')) $fail('The two new passwords do not match.', ['tab' => 'settings']);
+    if (password_verify($new, $hash)) $fail('Your new password must be different from your current one.', ['tab' => 'settings']);
+    q("UPDATE staff SET password_hash = ?, must_change_password = 0 WHERE id = ?", [password_hash($new, PASSWORD_DEFAULT), $myId]);
+    session_regenerate_id(true);
     flash('Your password has been changed.');
-    header('Location: ' . url(['tab' => 'settings']));
+    header('Location: ' . url(['tab' => 'settings']) . '#password');
+    exit;
+
+case 'force_password_change':
+    // Everyone else on the team must choose a new password the next time they open a page.
+    $n = q("UPDATE staff SET must_change_password = 1 WHERE id <> ?", [$myId])->rowCount();
+    flash($n ? $n . ' team member' . ($n === 1 ? '' : 's') . ' will be asked to set a new password the next time they open the dashboard.' : 'Everyone else was already asked to change their password.');
+    header('Location: ' . url(['tab' => 'settings']) . '#security');
+    exit;
+
+case 'security_unlock':
+    // Lets a locked-out person (or a blocked internet connection) try again straight away.
+    $email = strtolower($str('email')); $ip = $str('ip');
+    if ($email !== '') q("UPDATE login_attempts SET cleared = 1 WHERE email = ? AND success = 0 AND cleared = 0", [$email]);
+    if ($ip !== '') q("UPDATE login_attempts SET cleared = 1 WHERE ip_address = ? AND success = 0 AND cleared = 0", [$ip]);
+    flash($email !== '' ? $email . ' is unlocked and can sign in again.' : 'That internet connection can try signing in again.');
+    header('Location: ' . url(['tab' => 'settings']) . '#security');
     exit;
 
 default:

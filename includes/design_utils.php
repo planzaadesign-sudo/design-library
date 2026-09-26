@@ -210,7 +210,7 @@ function preview_urls($designId, $base = '') {
 // ---- Drafts and publishing -------------------------------------------------------------------
 /**
  * The draft design for an approved submission (created on approval). Copies the brief's
- * parameters and puts the designer's CAD file into cad_architectural and their preview
+ * parameters and puts the Design Creator's CAD file into cad_architectural and their preview
  * image into preview_plan. Returns the draft design id (existing or new).
  */
 function create_draft_from_submission($subId, $staffId) {
@@ -236,7 +236,7 @@ function create_draft_from_submission($subId, $staffId) {
     $designId = (int)getDB()->lastInsertId();
     $design = ['id' => $designId, 'design_code' => null];
 
-    // The designer's own files go straight into their slots (copies -- the submission keeps its originals).
+    // The Design Creator's own files go straight into their slots (copies -- the submission keeps its originals).
     $uploads = realpath(__DIR__ . '/../uploads');
     foreach (['cad_file_path' => 'cad_architectural', 'preview_path' => 'preview_plan'] as $col => $slot) {
         $rel = (string)($sub[$col] ?? '');

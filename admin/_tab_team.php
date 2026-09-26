@@ -28,11 +28,13 @@ $v = function ($key, $default = '') use ($editing) { $o = old($key, null); retur
         <option value="inhouse" <?= $v('role', 'inhouse') === 'inhouse' ? 'selected' : '' ?>>In-house team</option>
         <option value="admin" <?= $v('role') === 'admin' ? 'selected' : '' ?>>Admin</option>
       </select><?php if ($editing && (int)$editing['id'] === $myId): ?><input type="hidden" name="role" value="admin"><small>You cannot change your own role.</small><?php endif; ?></label>
-      <?php if (!$editing): ?>
-        <label>Password<input name="password" type="password" required minlength="8" autocomplete="new-password"><small>At least 8 characters.</small></label>
-        <label>Type the password again<input name="password2" type="password" required minlength="8" autocomplete="new-password"></label>
+      <?php if (!$editing || (int)$editing['id'] !== $myId): ?>
+        <label><?= $editing ? 'New temporary password <span class="muted">(optional)</span>' : 'Temporary password' ?><input id="tmpPw" name="password" type="password"<?= $editing ? '' : ' required' ?> minlength="<?= PASSWORD_MIN_LENGTH ?>" maxlength="200" autocomplete="new-password">
+          <small><?= $editing ? 'Only if they cannot sign in. ' : '' ?>They will be asked to choose their own password when they first sign in.</small></label>
+        <label>Type the password again<input id="tmpPw2" name="password2" type="password"<?= $editing ? '' : ' required' ?> maxlength="200" autocomplete="new-password"></label>
       <?php endif; ?>
     </div>
+    <?php if (!$editing || (int)$editing['id'] !== $myId): ?><?= $editing ? '' : password_rules_html('tmpPw', 'tmpPw2') ?><?php endif; ?>
     <div class="adm-actions">
       <a class="btn" href="<?= h(url(['tab' => 'team'])) ?>">Cancel</a>
       <button class="btn btn-primary" type="submit"><?= $editing ? 'Save changes' : 'Add team member' ?></button>
@@ -46,7 +48,7 @@ $v = function ($key, $default = '') use ($editing) { $o = old($key, null); retur
   <tbody>
   <?php foreach ($staff as $s): $me = (int)$s['id'] === $myId; ?>
     <tr>
-      <td><strong><?= h($s['name']) ?></strong><?= $me ? ' <span class="badge badge-neutral">You</span>' : '' ?></td>
+      <td><strong><?= h($s['name']) ?></strong><?= $me ? ' <span class="badge badge-neutral">You</span>' : '' ?><?= !empty($s['must_change_password']) ? ' <span class="badge b-amber">Must set a new password</span>' : '' ?></td>
       <td><?= h($s['email']) ?></td>
       <td><?= $s['role'] === 'admin' ? '<span class="badge b-blue">Admin</span>' : '<span class="badge badge-neutral">In-house</span>' ?></td>
       <td><?= (int)$s['active_orders'] ?></td>

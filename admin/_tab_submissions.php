@@ -59,7 +59,7 @@ $subs = q(SUBMISSION_SELECT . " $cond ORDER BY (s.review_status = 'pending') DES
   <div class="adm-card"><p class="empty">No submissions<?= $status !== '' ? ' here' : ' yet' ?>.</p></div>
 <?php else: ?>
 <div class="table-wrap"><table class="adm-table">
-  <thead><tr><th>ID</th><th>Brief</th><th>Freelancer</th><th>Submitted</th><th>Status</th><th>Reviewer</th><th></th></tr></thead>
+  <thead><tr><th>ID</th><th>Brief</th><th>Design Creator</th><th>Submitted</th><th>Status</th><th>Reviewer</th><th></th></tr></thead>
   <tbody>
   <?php foreach ($subs as $s): $link = url(['tab' => 'submissions', 'id' => $s['id']]); $pending = $s['review_status'] === 'pending'; ?>
     <tr class="row-link<?= $pending ? ' flag' : '' ?>" data-href="<?= h($link) ?>">

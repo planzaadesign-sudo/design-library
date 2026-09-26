@@ -140,9 +140,9 @@ function render_brief_form(array $v, array $opts) {
         . '<label class="bf-field bf-title">Brief title<input name="title" required maxlength="150" value="' . bf_h($val('title')) . '" placeholder="e.g. 30x40 East-facing 3BHK with courtyard"></label>'
         . render_param_sections($v, true)
         . '<fieldset class="bf-section"><legend><span>6</span>What should be different about this design?</legend>'
-        .   '<p class="bf-help">We already have similar designs in our library. Tell the designer what should make THIS one stand out &#8212; a different room arrangement, a unique outside look, a special feature, and so on.</p>'
+        .   '<p class="bf-help">We already have similar designs in our library. Tell the Design Creator what should make THIS one stand out &#8212; a different room arrangement, a unique outside look, a special feature, and so on.</p>'
         .   '<textarea name="differentiation_notes" rows="4" required maxlength="3000">' . bf_h($val('differentiation_notes')) . '</textarea>'
-        .   '<label class="bf-field">Anything else the designer should know? <em>(optional)</em><textarea name="requirements" rows="3" maxlength="3000">' . bf_h($val('requirements')) . '</textarea></label>'
+        .   '<label class="bf-field">Anything else the Design Creator should know? <em>(optional)</em><textarea name="requirements" rows="3" maxlength="3000">' . bf_h($val('requirements')) . '</textarea></label>'
         . '</fieldset>'
         . '<fieldset class="bf-section"><legend><span>7</span>Payout and deadline</legend><div class="bf-row">'
         .   '<label class="bf-field">Payout (&#8377;)<input type="number" name="payout" min="1" required value="' . bf_h($val('payout')) . '"></label>'

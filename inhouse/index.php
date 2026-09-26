@@ -13,6 +13,7 @@ $seeAll = ($_SESSION['staff_role'] ?? '') === 'admin' ? 1 : 0;
 $TABS = [
     'dashboard' => ['Dashboard', 'dashboard'], 'orders' => ['My Orders', 'orders'], 'review' => ['Review Queue', 'review'],
     'standardize' => ['Standardize', 'standardize'], 'postbrief' => ['Post Brief', 'postbrief'], 'briefs' => ['My Briefs', 'briefs'],
+    'password' => ['Change Password', 'lock'],
 ];
 $tab = $_GET['tab'] ?? 'dashboard';
 if ($tab === 'assigned') $tab = 'orders'; // old link
@@ -31,6 +32,12 @@ if (!$problems && $_SERVER['REQUEST_METHOD'] === 'POST') {
     dash_csrf_check();
     $action = (string)($_POST['action'] ?? '');
 
+    if ($action === 'password_change') {
+        $err = dash_change_password('staff', $myId);
+        dash_flash($err ?: 'Your password has been changed.', $err ? 'err' : 'ok');
+        dash_redirect(['tab' => 'password']);
+    }
+
     if ($action === 'review') {
         // Same rules as the admin review: confirm "different enough" before approving,
         // and write notes before sending back.
@@ -40,14 +47,14 @@ if (!$problems && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $sub = sim_q("SELECT brief_id, review_status FROM submissions WHERE id = ?", [$subId])->fetch();
         if (!$sub || $sub['review_status'] !== 'pending') { dash_flash('This submission has already been reviewed.', 'err'); dash_redirect(['tab' => 'review']); }
         if (!in_array($outcome, ['approve', 'approve_edits', 'reject'], true)) { dash_flash('Please choose a review action.', 'err'); dash_redirect(['tab' => 'review']); }
-        if ($outcome === 'reject' && $notes === '') { dash_flash('Please write what the designer should change before sending it back.', 'err'); dash_redirect(['tab' => 'review']); }
+        if ($outcome === 'reject' && $notes === '') { dash_flash('Please write what the Design Creator should change before sending it back.', 'err'); dash_redirect(['tab' => 'review']); }
         if ($outcome !== 'reject' && empty($_POST['confirm_different'])) { dash_flash('Please check the similarity confirmation before approving.', 'err'); dash_redirect(['tab' => 'review']); }
         if ($outcome === 'approve_edits') $notes = trim('Approved. Our in-house team will make small fixes before publishing. ' . $notes);
         $status = $outcome === 'reject' ? 'rejected' : 'approved';
         sim_q("UPDATE submissions SET review_status = ?, reviewer_id = ?, review_notes = ?, reviewed_at = NOW() WHERE id = ?", [$status, $myId, $notes, $subId]);
         sim_q("UPDATE briefs SET status = ? WHERE id = ?", [$status === 'approved' ? 'approved' : 'needs_revision', (int)$sub['brief_id']]);
-        if ($status === 'approved') create_draft_from_submission($subId, $myId); // the designer's CAD + preview go into their slots
-        dash_flash($status === 'approved' ? 'Approved. It is now in Standardize — upload the remaining files there, then publish.' : 'Sent back to the designer with your notes.');
+        if ($status === 'approved') create_draft_from_submission($subId, $myId); // the Design Creator's CAD + preview go into their slots
+        dash_flash($status === 'approved' ? 'Approved. It is now in Standardize — upload the remaining files there, then publish.' : 'Sent back to the Design Creator with your notes.');
         dash_redirect(['tab' => 'review']);
     }
 
@@ -123,7 +130,7 @@ if (!$problems && $_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['dash_old'] = $keep;
             dash_redirect(['tab' => 'postbrief']);
         }
-        dash_flash('Brief posted. Designers can now claim it.');
+        dash_flash('Brief posted. Design Creators can now claim it.');
         dash_redirect(['tab' => 'briefs']);
     }
 
@@ -352,13 +359,13 @@ elseif ($tab === 'review'):
       <?php if ($s['cad_file_path']): ?><a class="btn btn-small" href="../<?= dh($s['cad_file_path']) ?>" download>Download CAD file</a><?php else: ?><span class="muted">No CAD file attached</span><?php endif; ?>
       <?php if (!empty($s['preview_path'])): ?><a class="btn btn-small" href="../<?= dh($s['preview_path']) ?>" target="_blank" rel="noopener">Open preview image</a><?php endif; ?>
     </div>
-    <?php if ($s['notes']): ?><p class="note-text"><span class="muted">Designer's note:</span> <?= nl2br(dh($s['notes'])) ?></p><?php endif; ?>
+    <?php if ($s['notes']): ?><p class="note-text"><span class="muted">Creator's note:</span> <?= nl2br(dh($s['notes'])) ?></p><?php endif; ?>
     <?= $sim['html'] ?>
     <form method="post" class="review-form" data-saving>
       <?= dash_csrf_field() ?>
       <input type="hidden" name="action" value="review"><input type="hidden" name="submission_id" value="<?= (int)$s['id'] ?>">
       <?= render_review_extras($sim['matches']) ?>
-      <label for="rn<?= (int)$s['id'] ?>">Notes for the designer <span class="muted">(needed when sending back)</span></label>
+      <label for="rn<?= (int)$s['id'] ?>">Notes for the Design Creator <span class="muted">(needed when sending back)</span></label>
       <textarea id="rn<?= (int)$s['id'] ?>" name="review_notes" rows="3" maxlength="2000"></textarea>
       <div class="adm-actions left">
         <button class="btn btn-primary" name="outcome" value="approve" data-needs-confirm>Approve</button>
@@ -422,7 +429,7 @@ elseif ($tab === 'standardize'):
 elseif ($tab === 'postbrief'): ?>
 <section class="adm-card form-card">
   <h2>Post a new brief</h2>
-  <p class="muted">Answer each question so we can check the library for similar designs before a designer starts work.</p>
+  <p class="muted">Answer each question so we can check the library for similar designs before a Design Creator starts work.</p>
   <?= render_brief_form($old, [
       'hidden' => dash_csrf_field() . '<input type="hidden" name="action" value="post_brief">',
       'api' => '../api/similarity-check.php',
@@ -495,6 +502,12 @@ elseif ($tab === 'briefs'):
     </tr>
   <?php endforeach; ?></tbody></table></div>
 <?php endif;
+
+// =====================================================================================
+// CHANGE PASSWORD
+// =====================================================================================
+elseif ($tab === 'password'):
+    echo dash_password_form();
 endif;
 
 echo dash_layout_end();

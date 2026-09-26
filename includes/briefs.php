@@ -50,7 +50,7 @@ function validate_brief_input(array $in, $forDesign = false) {
         // results were shown, and sets this flag then. A direct POST without it is refused.
         if (empty($in['similarity_checked'])) return [null, 'Please click "Check Similarity" and review the results before posting this brief.'];
         $d['differentiation_notes'] = $str('differentiation_notes');
-        if ($d['differentiation_notes'] === '') return [null, 'Please tell the designer what should make this design different.'];
+        if ($d['differentiation_notes'] === '') return [null, 'Please tell the Design Creator what should make this design different.'];
         if (mb_strlen($d['differentiation_notes']) > 3000) return [null, 'Please keep "what should be different" shorter.'];
         $extra = $str('requirements');
         if (mb_strlen($extra) > 3000) return [null, 'Please keep the extra notes shorter.'];
@@ -119,7 +119,7 @@ function save_brief(array $d, $staffId, $confirmedSimilar) {
  * "Standardise & publish": publishes the approved submission's draft design (created on
  * approval, see includes/design_utils.php). Every required design file must be uploaded first.
  * Assigns the design code, moves the files into uploads/designs/{code}/, and keeps the full
- * audit trail (brief poster, designer, reviewer, approver, publisher).
+ * audit trail (brief poster, Design Creator, reviewer, approver, publisher).
  * Returns [designId, null] or [null, error message].
  */
 function publish_submission($subId, $staffId) {
@@ -128,7 +128,7 @@ function publish_submission($subId, $staffId) {
     return publish_design_draft($draftId, $staffId);
 }
 
-// A brief's parameters as stored (for review screens and the freelancer view).
+// A brief's parameters as stored (for review screens and the Creator Studio).
 function brief_params($briefId) {
     return sim_q("SELECT * FROM briefs WHERE id = ?", [(int)$briefId])->fetch() ?: null;
 }
